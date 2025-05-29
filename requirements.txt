@@ -1,0 +1,16 @@
+exifread
+sys
+os
+wxPython
+math
+json
+xml
+pandas
+pickle
+numpy
+xmltodict
+pprint
+rapidfuzz
+OpenEXR
+Imath
+rawpy
