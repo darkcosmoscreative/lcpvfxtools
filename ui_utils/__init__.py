@@ -577,12 +577,14 @@ class UIUtils(wx.Frame):
         # Get the selected values from the UI
         interface_lens_dict = self.get_lens_dict_from_interface()
         #print(interface_lens_dict)
-        scores = db_utils.score_lens_profile(interface_lens_dict, self.lens_db)
+        lens_scores = db_utils.score_lens_profile(interface_lens_dict, self.lens_db)
+        filtered_scores = db_utils.filter_profiles_by_best_combo(lens_scores, self.lens_db)
+        scores = db_utils.score_vignette_profiles(interface_lens_dict, filtered_scores)
 
-        '''
+        
         for _ in range(10):
             print(f"Score {_}: {scores[_]}")
-        '''
+        
 
         # Get file directory and name from original file
         if self.selected_file_path:
@@ -635,8 +637,14 @@ class UIUtils(wx.Frame):
         # Get the selected values from the UI
         interface_lens_dict = self.get_lens_dict_from_interface()
         #print(interface_lens_dict)
-        scores = db_utils.score_lens_profile(interface_lens_dict, self.lens_db)
+        lens_scores = db_utils.score_lens_profile(interface_lens_dict, self.lens_db)
+        filtered_scores = db_utils.filter_profiles_by_best_combo(lens_scores, self.lens_db)
+        scores = db_utils.score_tca_profiles(interface_lens_dict, filtered_scores)
 
+        '''
+        for _ in range(10):
+            print(f"Score {_}: {scores[_]}")
+        '''
         # Get file directory and name from original file
         if self.selected_file_path:
             file_dir = os.path.dirname(self.selected_file_path)

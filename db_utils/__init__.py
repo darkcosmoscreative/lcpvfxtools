@@ -1062,6 +1062,141 @@ class LensProfileDatabase:
             **available_data
         }
 
+def score_vignette_profiles(lens_dict, df):
+    """
+    Score profiles with exact make/model/lens match, requiring vignette data.
+    Higher score for higher aperture and closer focal length.
+
+    Args:
+        lens_dict (dict): Dictionary with keys 'focal_length' and 'aperture'.
+        df (pd.DataFrame): DataFrame filtered for exact make/model/lens.
+
+    Returns:
+        list: List of dicts with keys 'profile_idx', 'score', 'reasons', 'profile', sorted by score descending.
+    """
+    focal_length = lens_dict.get('focal_length')
+    aperture = lens_dict.get('aperture')
+    vignette_params = [
+        "VignetteModelParam1", "VignetteModelParam2", "VignetteModelParam3"
+    ]
+    scored = []
+    for idx, profile in df.iterrows():
+        # Require at least one vignette parameter to be present and not NaN
+        has_vignette = any(
+            (param in profile and pd.notna(profile[param])) for param in vignette_params
+        )
+        if not has_vignette:
+            continue  # Skip profiles without vignette
+
+        score = 0
+        reasons = []
+
+        # Aperture (higher is better)
+        if isinstance(profile['ApertureValue'], float) and isinstance(aperture, float):
+            score += profile['ApertureValue'] * 10
+            reasons.append(f'Aperture: {profile["ApertureValue"]}')
+        else:
+            reasons.append('No aperture value')
+
+        # Focal length closeness (higher score for closer)
+        if isinstance(profile['FocalLength'], float) and isinstance(focal_length, float):
+            focal_diff = abs(profile['FocalLength'] - focal_length)
+            score += max(0, 100 - focal_diff * 100)
+            reasons.append(f'Focal length diff: {focal_diff:.3f}')
+        else:
+            reasons.append('No focal length')
+
+        scored.append({
+            'profile_idx': idx,
+            'score': score,
+            'reasons': reasons,
+            'profile': profile
+        })
+
+    return sorted(scored, key=lambda x: x['score'], reverse=True)
+
+def score_tca_profiles(lens_dict, df):
+    """
+    Score profiles with exact make/model/lens match, requiring TCA data.
+    Higher score for closer focal length, and higher focus distance.
+
+    Args:
+        df (pd.DataFrame): DataFrame filtered for exact make/model/lens.
+        lens_dict (dict): Dictionary with keys 'focal_length' and 'distance'.
+
+    Returns:
+        list: List of dicts with keys 'profile_idx', 'score', 'reasons', 'profile', sorted by score descending.
+    """
+    focal_length = lens_dict.get('focal_length')
+    focus_distance = lens_dict.get('distance')
+    tca_params = [
+        "TCA_RedGreen_Radial1", "TCA_RedGreen_Radial2", "TCA_RedGreen_Radial3",
+        "TCA_Green_Radial1", "TCA_Green_Radial2", "TCA_Green_Radial3",
+        "TCA_BlueGreen_Radial1", "TCA_BlueGreen_Radial2", "TCA_BlueGreen_Radial3"
+    ]
+    scored = []
+    for idx, profile in df.iterrows():
+        # Require at least one TCA parameter to be present and not NaN
+        has_tca = any(
+            (param in profile and pd.notna(profile[param])) for param in tca_params
+        )
+        if not has_tca:
+            continue  # Skip profiles without TCA
+
+        score = 0
+        reasons = []
+
+        # Focal length closeness (higher score for closer)
+        if isinstance(profile['FocalLength'], float) and isinstance(focal_length, float):
+            focal_diff = abs(profile['FocalLength'] - focal_length)
+            score += max(0, 100 - focal_diff * 100)
+            reasons.append(f'Focal length diff: {focal_diff:.3f}')
+        else:
+            reasons.append('No focal length')
+
+        # Focus distance (higher is better)
+        if isinstance(profile['FocusDistance'], float):
+            score += profile['FocusDistance'] * 10
+            reasons.append(f'Focus distance: {profile["FocusDistance"]}')
+        else:
+            reasons.append('No focus distance')
+
+        scored.append({
+            'profile_idx': idx,
+            'score': score,
+            'reasons': reasons,
+            'profile': profile
+        })
+
+    return sorted(scored, key=lambda x: x['score'], reverse=True)
+
+def filter_profiles_by_best_combo(scored_profiles, db):
+    """
+    Given a scored profile list, return all profiles from df that match the top make/model/lens combo.
+
+    Args:
+        scored_profiles (list): List of dicts from score_lens_profile, sorted by score descending.
+        df (pd.DataFrame): The full DataFrame of profiles.
+
+    Returns:
+        pd.DataFrame: DataFrame filtered for the top make/model/lens combo.
+    """
+    if not scored_profiles:
+        return pd.DataFrame()  # Empty DataFrame if no profiles
+
+    df = db.data
+    top_profile = scored_profiles[0]['profile']
+    make = top_profile['Make']
+    model = top_profile['Model']
+    lens = top_profile['Lens']
+
+    filtered = df[
+        (df['Make'].str.lower() == str(make).lower()) &
+        (df['Model'].str.lower() == str(model).lower()) &
+        (df['Lens'].str.lower() == str(lens).lower())
+    ]
+    return filtered
+
 def score_lens_profile(lens_dict, db):
     """
     Score all profiles in the database for similarity to the requested lens/camera/focal/aperture/distance.
