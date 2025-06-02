@@ -201,30 +201,8 @@ def write_st_maps_from_params(write_dir=None,
     Yc = h / 2.0
 
     # Pixel grid, centered at image center
-    '''
-    overscan = 1.1
-    w_padded = int(w * overscan)
-    h_padded = int(h * overscan)
-    '''
-    #overscan = 1.1
-    '''
-    w_padded = int(np.ceil(w * overscan))
-    if w_padded % 2 != 0:
-        w_padded += 1  # Force even
 
-    h_padded = int(np.ceil(h * overscan))
-    if h_padded % 2 != 0:
-        h_padded += 1  # Force even
 
-    padded_w_total = abs(w_padded - w)
-    padded_w_xmin = 0-int(padded_w_total // 2)
-    padded_w_xmax = (w - 1) + int(padded_w_total // 2)
-    padded_h_total = abs(h_padded - h)
-    padded_h_ymin = 0-int(padded_h_total // 2)
-    padded_h_ymax = (h - 1) + int(padded_h_total // 2)
-    Xc_padded = w_padded / 2.0
-    Yc_padded = h_padded / 2.0
-    '''
     xgrid_nopad, ygrid_nopad = np.meshgrid(
         np.arange(w),
         np.arange(h),
@@ -250,17 +228,13 @@ def write_st_maps_from_params(write_dir=None,
     redist_nopad = get_geometry_distortion(
         grid_nopad, k1, k2, k3, k4, k5, focal_length_x, focal_length_y, Dmax)
 
-    # redist_coords has shape (H, W, 2)
-    dx = sobel(undist_nopad[..., 0], axis=1) / 8.0
-    dy = sobel(undist_nopad[..., 0], axis=0) / 8.0
-    dx2 = sobel(undist_nopad[..., 1], axis=1) / 8.0
-    dy2 = sobel(undist_nopad[..., 1], axis=0) / 8.0
+    delta = redist_nopad - grid_nopad
+    displacement = np.linalg.norm(delta, axis=-1)
+    max_disp = ((np.max(displacement)) / max(w, h)) * 2
+    print(f"Max displacement: {max_disp:.4f} pixels")
+    overscan = ((1.0 + max_disp) / 1.0)
+    print(f"Calculated overscan factor: {overscan:.4f}")
 
-    # Jacobian matrix at each pixel is [[dx, dy], [dx2, dy2]]
-    # For each pixel, compute local norm (e.g. Frobenius or spectral)
-    stretch = np.sqrt(dx**2 + dy**2 + dx2**2 + dy2**2)
-    max_stretch = np.max(stretch)
-    overscan = max_stretch
 
     w_padded = int(np.ceil(w * overscan))
     if w_padded % 2 != 0:
