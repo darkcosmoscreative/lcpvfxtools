@@ -3,6 +3,8 @@ import numpy as np
 import OpenEXR
 import Imath
 import rawpy
+from scipy.ndimage import sobel
+
 
 print('lcpvfxtools.cc_utils initialised')
 
@@ -204,7 +206,8 @@ def write_st_maps_from_params(write_dir=None,
     w_padded = int(w * overscan)
     h_padded = int(h * overscan)
     '''
-    overscan = 1.1
+    #overscan = 1.1
+    '''
     w_padded = int(np.ceil(w * overscan))
     if w_padded % 2 != 0:
         w_padded += 1  # Force even
@@ -221,16 +224,65 @@ def write_st_maps_from_params(write_dir=None,
     padded_h_ymax = (h - 1) + int(padded_h_total // 2)
     Xc_padded = w_padded / 2.0
     Yc_padded = h_padded / 2.0
-    x_pix, y_pix = np.meshgrid(np.arange(w_padded), np.arange(h_padded), indexing='xy')
-    x = x_pix - Xc_padded
-    y = y_pix - Yc_padded
-    grid = np.stack([x, y], axis=-1)
+    '''
+    xgrid_nopad, ygrid_nopad = np.meshgrid(
+        np.arange(w),
+        np.arange(h),
+        indexing='xy'
+    )
+    #x_pix, y_pix = np.meshgrid(np.arange(w_padded), np.arange(h_padded), indexing='xy')
+    x_nopad = xgrid_nopad - Xc
+    y_nopad = ygrid_nopad - Yc
+    grid_nopad = np.stack([x_nopad, y_nopad], axis=-1)
+    #x = x_pix - Xc_padded
+    #y = y_pix - Yc_padded
+    #grid = np.stack([x, y], axis=-1)
 
     k1 = radialdistortparam1 if radialdistortparam1 is not None else 0.0
     k2 = radialDistortparam2 if radialDistortparam2 is not None else 0.0
     k3 = radialDistortparam3 if radialDistortparam3 is not None else 0.0
     k4 = tangentialdistortparam1 if tangentialdistortparam1 is not None else 0.0
     k5 = tangentialdistortparam2 if tangentialdistortparam2 is not None else 0.0
+
+    # do distortion for overscan first
+    undist_nopad = get_reverse_geometry_distortion(
+        grid_nopad, k1, k2, k3, k4, k5, focal_length_x, focal_length_y, Dmax)
+    redist_nopad = get_geometry_distortion(
+        grid_nopad, k1, k2, k3, k4, k5, focal_length_x, focal_length_y, Dmax)
+
+    # redist_coords has shape (H, W, 2)
+    dx = sobel(undist_nopad[..., 0], axis=1) / 8.0
+    dy = sobel(undist_nopad[..., 0], axis=0) / 8.0
+    dx2 = sobel(undist_nopad[..., 1], axis=1) / 8.0
+    dy2 = sobel(undist_nopad[..., 1], axis=0) / 8.0
+
+    # Jacobian matrix at each pixel is [[dx, dy], [dx2, dy2]]
+    # For each pixel, compute local norm (e.g. Frobenius or spectral)
+    stretch = np.sqrt(dx**2 + dy**2 + dx2**2 + dy2**2)
+    max_stretch = np.max(stretch)
+    overscan = max_stretch
+
+    w_padded = int(np.ceil(w * overscan))
+    if w_padded % 2 != 0:
+        w_padded += 1  # Force even
+
+    h_padded = int(np.ceil(h * overscan))
+    if h_padded % 2 != 0:
+        h_padded += 1  # Force even
+
+    padded_w_total = abs(w_padded - w)
+    padded_w_xmin = 0-int(padded_w_total // 2)
+    padded_w_xmax = (w - 1) + int(padded_w_total // 2)
+    padded_h_total = abs(h_padded - h)
+    padded_h_ymin = 0-int(padded_h_total // 2)
+    padded_h_ymax = (h - 1) + int(padded_h_total // 2)
+    Xc_padded = w_padded / 2.0
+    Yc_padded = h_padded / 2.0
+
+    x_pix, y_pix = np.meshgrid(np.arange(w_padded), np.arange(h_padded), indexing='xy')
+    x = x_pix - Xc_padded
+    y = y_pix - Yc_padded
+    grid = np.stack([x, y], axis=-1)
 
     undist_coords = get_reverse_geometry_distortion(
         grid, k1, k2, k3, k4, k5, focal_length_x, focal_length_y, Dmax)
