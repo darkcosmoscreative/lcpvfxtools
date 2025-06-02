@@ -199,9 +199,14 @@ def write_st_maps_from_params(write_dir=None,
     Yc = h / 2.0
 
     # Pixel grid, centered at image center
-    x_pix, y_pix = np.meshgrid(np.arange(w), np.arange(h), indexing='xy')
-    x = x_pix - Xc
-    y = y_pix - Yc
+    overscan = 1.1
+    w_padded = int(w * overscan)
+    h_padded = int(h * overscan)
+    Xc_padded = w_padded / 2.0
+    Yc_padded = h_padded / 2.0
+    x_pix, y_pix = np.meshgrid(np.arange(w_padded), np.arange(h_padded), indexing='xy')
+    x = x_pix - Xc_padded
+    y = y_pix - Yc_padded
     grid = np.stack([x, y], axis=-1)
 
     k1 = radialdistortparam1 if radialdistortparam1 is not None else 0.0
