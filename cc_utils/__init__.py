@@ -148,10 +148,10 @@ def to_nuke_stmap(xy, w, h):
     """
     Xc = w / 2.0
     Yc = h / 2.0
-    x_pix = xy[..., 0] + Xc
-    y_pix = xy[..., 1] + Yc
-    s = x_pix / w
-    t = 1.0 - (y_pix / h)
+    x_pix = (xy[..., 0]) + Xc
+    y_pix = (xy[..., 1]) + Yc
+    s = (x_pix + 0.5) / w
+    t = 1.0 - ((y_pix + 0.5) / h)
     return np.stack([s, t], axis=-1).astype(np.float32)
 
 def write_st_maps_from_params(write_dir=None,
