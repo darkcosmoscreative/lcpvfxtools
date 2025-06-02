@@ -231,9 +231,9 @@ def write_st_maps_from_params(write_dir=None,
     delta = redist_nopad - grid_nopad
     displacement = np.linalg.norm(delta, axis=-1)
     max_disp = ((np.max(displacement)) / max(w, h)) * 2
-    print(f"Max displacement: {max_disp:.4f} pixels")
+    #print(f"Max displacement: {max_disp:.4f} pixels")
     overscan = ((1.0 + max_disp) / 1.0)
-    print(f"Calculated overscan factor: {overscan:.4f}")
+    #print(f"Calculated overscan factor: {overscan:.4f}")
 
 
     w_padded = int(np.ceil(w * overscan))
@@ -308,8 +308,9 @@ def write_st_maps_from_params(write_dir=None,
         print(f"Saved: {filepath}")
 
     if write_dir and basename:
-        undistort_path = os.path.join(write_dir, f"{basename}_undistort_map.exr")
-        distort_path = os.path.join(write_dir, f"{basename}_distort_map.exr")
+        # note - naming is reversed at the file system compared to calculation
+        undistort_path = os.path.join(write_dir, f"{basename}_distort_map.exr")
+        distort_path = os.path.join(write_dir, f"{basename}_undistort_map.exr")
         save_exr(undistort_path, undistort_map, w, h, padded_w_xmin, padded_w_xmax, padded_h_ymin, padded_h_ymax)
         save_exr(distort_path, distort_map, w, h, padded_w_xmin, padded_w_xmax, padded_h_ymin, padded_h_ymax)
 
