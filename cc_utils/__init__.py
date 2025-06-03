@@ -310,7 +310,7 @@ def write_st_maps_from_params(write_dir=None,
 
     if write_dir and basename:
         # note - naming is reversed at the file system compared to calculation
-        undistort_path = os.path.join(write_dir, f"{basename}_distort_map.exr")
+        undistort_path = os.path.join(write_dir, f"{basename}_redistort_map.exr")
         distort_path = os.path.join(write_dir, f"{basename}_undistort_map.exr")
         save_st_exr(undistort_path, undistort_map, w, h, padded_w_xmin, padded_w_xmax, padded_h_ymin, padded_h_ymax)
         save_st_exr(distort_path, distort_map, w, h, padded_w_xmin, padded_w_xmax, padded_h_ymin, padded_h_ymax)
@@ -400,8 +400,8 @@ def write_vignette_map_from_params(write_dir=None,
     # Clamp gain to avoid negative/unstable results (optional but wise)
     gain = np.clip(gain, 0.001, 10.0)
 
-    # Convert to 3-channel map for RGB gain (optional)
-    vignette_map = np.stack([gain, gain, gain], axis=-1).astype(np.float32)
+    # Convert to 3-channel map (using 1/channel to multiply in nuke)
+    vignette_map = np.stack([1/gain, 1/gain, 1/gain], axis=-1).astype(np.float32)
 
     def save_exr(filepath, map_array):
         """
