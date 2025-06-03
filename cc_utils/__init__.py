@@ -66,7 +66,7 @@ def write_exr_from_cameraraw(write_dir, basename, raw_file_path):
     }
 
     # Optional: embed basic metadata
-    header['comments'] = f'Converted from RAW: {os.path.basename(raw_file_path)}'
+    #header['comments'] = f'Converted from RAW: {os.path.basename(raw_file_path)}'
 
     # Create output path
     out_path = os.path.join(write_dir, f"{basename}_xyz.exr")
@@ -179,12 +179,14 @@ def save_st_exr(filepath, map_array, orig_width, orig_height, min_x, max_x, min_
     data_window_min = min_x, min_y # (int(min_x), int(min_y))
     data_window_max = max_x, max_y #(int(min_x + width - 1), int(min_y + height - 1))
 
+    '''
     print(f"Saving EXR: {filepath}")
     print(f"  map_array.shape: {map_array.shape}")
     print(f"  display_window_min: {display_window_min}")
     print(f"  display_window_max: {display_window_max}")
     print(f"  data_window_min: {data_window_min}")
     print(f"  data_window_max: {data_window_max}")
+    '''
 
     header = OpenEXR.Header(orig_width, orig_height)
     header['displayWindow'] = Imath.Box2i(Imath.V2i(*display_window_min), Imath.V2i(*display_window_max))
@@ -352,6 +354,8 @@ def write_vignette_map_from_params(write_dir=None,
     Returns:
         np.ndarray: Vignette gain map as a numpy array.
     """
+
+    '''
     print('write_vignette_map_from_params')
     print(f'write_dir: {write_dir}')
     print(f'basename: {basename}')
@@ -362,6 +366,7 @@ def write_vignette_map_from_params(write_dir=None,
     print(f'vignette_param1: {vignette_param1}')
     print(f'vignette_param2: {vignette_param2}')
     print(f'vignette_param3: {vignette_param3}')
+    '''
 
     h, w = int(y_resolution), int(x_resolution)
     Dmax = max(w, h)

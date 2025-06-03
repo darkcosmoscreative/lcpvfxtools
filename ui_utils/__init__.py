@@ -581,47 +581,54 @@ class UIUtils(wx.Frame):
         filtered_scores = db_utils.filter_profiles_by_best_combo(lens_scores, self.lens_db)
         scores = db_utils.score_vignette_profiles(interface_lens_dict, filtered_scores)
 
-        
+        '''
         for _ in range(10):
             print(f"Score {_}: {scores[_]}")
+        '''
         
-
-        # Get file directory and name from original file
-        if self.selected_file_path:
-            file_dir = os.path.dirname(self.selected_file_path)
-            file_name = os.path.basename(self.selected_file_path)
-            file_basename = os.path.splitext(file_name)[0]
-
-
-        # Get the x and y resolution from the selected file
-        if self.selected_file_path:
-            x_resolution, y_resolution = exif_utils.get_resolution_from_exif(self.selected_file_path)
+        if scores != []:
+            # Get file directory and name from original file
+            if self.selected_file_path:
+                file_dir = os.path.dirname(self.selected_file_path)
+                file_name = os.path.basename(self.selected_file_path)
+                file_basename = os.path.splitext(file_name)[0]
 
 
-        best_profile = scores[0]['profile']
-        focal_length_x = best_profile['FocalLengthX']
-        focal_length_y = best_profile['FocalLengthY']
-        vignette_param1 = best_profile['VignetteModelParam1']
-        vignette_param2 = best_profile['VignetteModelParam2']
-        vignette_param3 = best_profile['VignetteModelParam3']
-        
-        if isinstance(vignette_param1, float):
-            if not math.isnan(vignette_param1):
-                cc_utils.write_vignette_map_from_params(
-                    write_dir=file_dir,
-                    basename=file_basename,
-                    x_resolution=x_resolution,
-                    y_resolution=y_resolution,
-                    focal_length_x=focal_length_x,
-                    focal_length_y=focal_length_y,
-                    vignette_param1=vignette_param1,
-                    vignette_param2=vignette_param2,
-                    vignette_param3=vignette_param3
-                )
-                dlg = wx.MessageDialog(self, "Vignette map generated successfully.", "Success", wx.OK | wx.ICON_INFORMATION)
-                dlg.ShowModal()
-                dlg.Destroy()
-            else:
+            # Get the x and y resolution from the selected file
+            if self.selected_file_path:
+                x_resolution, y_resolution = exif_utils.get_resolution_from_exif(self.selected_file_path)
+
+
+            best_profile = scores[0]['profile']
+            focal_length_x = best_profile['FocalLengthX']
+            focal_length_y = best_profile['FocalLengthY']
+            vignette_param1 = best_profile['VignetteModelParam1']
+            vignette_param2 = best_profile['VignetteModelParam2']
+            vignette_param3 = best_profile['VignetteModelParam3']
+            
+            if isinstance(vignette_param1, float):
+                if not math.isnan(vignette_param1):
+                    cc_utils.write_vignette_map_from_params(
+                        write_dir=file_dir,
+                        basename=file_basename,
+                        x_resolution=x_resolution,
+                        y_resolution=y_resolution,
+                        focal_length_x=focal_length_x,
+                        focal_length_y=focal_length_y,
+                        vignette_param1=vignette_param1,
+                        vignette_param2=vignette_param2,
+                        vignette_param3=vignette_param3
+                    )
+                    dlg = wx.MessageDialog(self, "Vignette map generated successfully.", "Success", wx.OK | wx.ICON_INFORMATION)
+                    dlg.ShowModal()
+                    dlg.Destroy()
+                else:
+                    print("Vignette parameters not available for this profile.")
+                    dlg = wx.MessageDialog(self, "Profile does not have the required data for vignette map.", "Information", wx.OK | wx.ICON_ERROR)
+                    dlg.ShowModal()
+                    dlg.Destroy()
+
+        else:
                 print("Vignette parameters not available for this profile.")
                 dlg = wx.MessageDialog(self, "Profile does not have the required data for vignette map.", "Information", wx.OK | wx.ICON_ERROR)
                 dlg.ShowModal()
@@ -645,58 +652,66 @@ class UIUtils(wx.Frame):
         for _ in range(10):
             print(f"Score {_}: {scores[_]}")
         '''
-        # Get file directory and name from original file
-        if self.selected_file_path:
-            file_dir = os.path.dirname(self.selected_file_path)
-            file_name = os.path.basename(self.selected_file_path)
-            file_basename = os.path.splitext(file_name)[0]
+
+        if scores != []:
+            # Get file directory and name from original file
+            if self.selected_file_path:
+                file_dir = os.path.dirname(self.selected_file_path)
+                file_name = os.path.basename(self.selected_file_path)
+                file_basename = os.path.splitext(file_name)[0]
 
 
-        # Get the x and y resolution from the selected file
-        if self.selected_file_path:
-            x_resolution, y_resolution = exif_utils.get_resolution_from_exif(self.selected_file_path)
+            # Get the x and y resolution from the selected file
+            if self.selected_file_path:
+                x_resolution, y_resolution = exif_utils.get_resolution_from_exif(self.selected_file_path)
 
 
-        best_profile = scores[0]['profile']
-        focal_length_x = best_profile['FocalLengthX']
-        focal_length_y = best_profile['FocalLengthY']
-        tca_redgreen_radial1 = best_profile['TCA_RedGreen_Radial1']
-        tca_redgreen_radial2 = best_profile['TCA_RedGreen_Radial2']
-        tca_redgreen_radial3 = best_profile['TCA_RedGreen_Radial3']
-        tca_green_radial1 = best_profile['TCA_Green_Radial1']
-        tca_green_radial2 = best_profile['TCA_Green_Radial2']
-        tca_green_radial3 = best_profile['TCA_Green_Radial3']
-        tca_bluegreen_radial1 = best_profile['TCA_BlueGreen_Radial1']
-        tca_bluegreen_radial2 = best_profile['TCA_BlueGreen_Radial2']
-        tca_bluegreen_radial3 = best_profile['TCA_BlueGreen_Radial3']
-        
-        if isinstance(tca_redgreen_radial1, float):
-            if not math.isnan(tca_redgreen_radial1):
-                cc_utils.write_tca_maps_from_params(
-                    write_dir=file_dir,
-                    basename=file_basename,
-                    x_resolution=x_resolution,
-                    y_resolution=y_resolution,
-                    focal_length_x= focal_length_x,
-                    focal_length_y= focal_length_y,
-                    tca_redgreen_radial1=tca_redgreen_radial1,
-                    tca_redgreen_radial2=tca_redgreen_radial2,
-                    tca_redgreen_radial3=tca_redgreen_radial3,
-                    tca_green_radial1=tca_green_radial1,
-                    tca_green_radial2=tca_green_radial2,
-                    tca_green_radial3=tca_green_radial3,
-                    tca_bluegreen_radial1=tca_bluegreen_radial1,
-                    tca_bluegreen_radial2=tca_bluegreen_radial2,
-                    tca_bluegreen_radial3=tca_bluegreen_radial3
-                )
-                dlg = wx.MessageDialog(self, "TCA maps generated successfully.", "Success", wx.OK | wx.ICON_INFORMATION)
-                dlg.ShowModal()
-                dlg.Destroy()
-            else:
-                print("TCA parameters not available for this profile.")
-                dlg = wx.MessageDialog(self, "Profile does not have the required data for TCA maps.", "Information", wx.OK | wx.ICON_ERROR)
-                dlg.ShowModal()
-                dlg.Destroy()
+            best_profile = scores[0]['profile']
+            focal_length_x = best_profile['FocalLengthX']
+            focal_length_y = best_profile['FocalLengthY']
+            tca_redgreen_radial1 = best_profile['TCA_RedGreen_Radial1']
+            tca_redgreen_radial2 = best_profile['TCA_RedGreen_Radial2']
+            tca_redgreen_radial3 = best_profile['TCA_RedGreen_Radial3']
+            tca_green_radial1 = best_profile['TCA_Green_Radial1']
+            tca_green_radial2 = best_profile['TCA_Green_Radial2']
+            tca_green_radial3 = best_profile['TCA_Green_Radial3']
+            tca_bluegreen_radial1 = best_profile['TCA_BlueGreen_Radial1']
+            tca_bluegreen_radial2 = best_profile['TCA_BlueGreen_Radial2']
+            tca_bluegreen_radial3 = best_profile['TCA_BlueGreen_Radial3']
+            
+            if isinstance(tca_redgreen_radial1, float):
+                if not math.isnan(tca_redgreen_radial1):
+                    cc_utils.write_tca_maps_from_params(
+                        write_dir=file_dir,
+                        basename=file_basename,
+                        x_resolution=x_resolution,
+                        y_resolution=y_resolution,
+                        focal_length_x= focal_length_x,
+                        focal_length_y= focal_length_y,
+                        tca_redgreen_radial1=tca_redgreen_radial1,
+                        tca_redgreen_radial2=tca_redgreen_radial2,
+                        tca_redgreen_radial3=tca_redgreen_radial3,
+                        tca_green_radial1=tca_green_radial1,
+                        tca_green_radial2=tca_green_radial2,
+                        tca_green_radial3=tca_green_radial3,
+                        tca_bluegreen_radial1=tca_bluegreen_radial1,
+                        tca_bluegreen_radial2=tca_bluegreen_radial2,
+                        tca_bluegreen_radial3=tca_bluegreen_radial3
+                    )
+                    dlg = wx.MessageDialog(self, "TCA maps generated successfully.", "Success", wx.OK | wx.ICON_INFORMATION)
+                    dlg.ShowModal()
+                    dlg.Destroy()
+                else:
+                    print("TCA parameters not available for this profile.")
+                    dlg = wx.MessageDialog(self, "Profile does not have the required data for TCA maps.", "Information", wx.OK | wx.ICON_ERROR)
+                    dlg.ShowModal()
+                    dlg.Destroy()
+
+        else:
+            print("TCA parameters not available for this profile.")
+            dlg = wx.MessageDialog(self, "Profile does not have the required data for TCA maps.", "Information", wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
 
 if __name__ == "__main__":
     app = wx.App(False)
