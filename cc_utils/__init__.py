@@ -3,7 +3,6 @@ import numpy as np
 import OpenEXR
 import Imath
 import rawpy
-from scipy.ndimage import sobel
 
 
 print('lcpvfxtools.cc_utils initialised')
