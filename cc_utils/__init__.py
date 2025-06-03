@@ -156,6 +156,48 @@ def to_nuke_stmap(xy, w, h):
     t = 1.0 - ((y_pix + 0.5) / h)
     return np.stack([s, t], axis=-1).astype(np.float32)
 
+
+def save_st_exr(filepath, map_array, orig_width, orig_height, min_x, max_x, min_y, max_y):
+    """
+    Save a 2-channel map as an OpenEXR file with custom data and display windows.
+
+    Args:
+        filepath (str): Output file path.
+        map_array (np.ndarray): Array of shape (H, W, 2).
+        orig_width (int): Original image width (display window).
+        orig_height (int): Original image height (display window).
+        min_x (int): X offset (in pixels) of the overscan grid's top-left relative to original image.
+        min_y (int): Y offset (in pixels) of the overscan grid's top-left relative to original image.
+    """
+    height, width = map_array.shape[:2]
+
+    # Display window: original image bounds
+    display_window_min = (0, 0)
+    display_window_max = (orig_width - 1, orig_height - 1)
+
+    # Data window: bounds of the overscan grid in original image coordinates
+    data_window_min = min_x, min_y # (int(min_x), int(min_y))
+    data_window_max = max_x, max_y #(int(min_x + width - 1), int(min_y + height - 1))
+
+    print(f"Saving EXR: {filepath}")
+    print(f"  map_array.shape: {map_array.shape}")
+    print(f"  display_window_min: {display_window_min}")
+    print(f"  display_window_max: {display_window_max}")
+    print(f"  data_window_min: {data_window_min}")
+    print(f"  data_window_max: {data_window_max}")
+
+    header = OpenEXR.Header(orig_width, orig_height)
+    header['displayWindow'] = Imath.Box2i(Imath.V2i(*display_window_min), Imath.V2i(*display_window_max))
+    header['dataWindow'] = Imath.Box2i(Imath.V2i(*data_window_min), Imath.V2i(*data_window_max))
+
+    FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
+    out = OpenEXR.OutputFile(filepath, header)
+    R = map_array[:, :, 0].astype(np.float32).tobytes()
+    G = map_array[:, :, 1].astype(np.float32).tobytes()
+    out.writePixels({'R': R, 'G': G})
+    out.close()
+    print(f"Saved: {filepath}")
+
 def write_st_maps_from_params(write_dir=None,
                         basename=None,
                         x_resolution=None,
@@ -208,13 +250,10 @@ def write_st_maps_from_params(write_dir=None,
         np.arange(h),
         indexing='xy'
     )
-    #x_pix, y_pix = np.meshgrid(np.arange(w_padded), np.arange(h_padded), indexing='xy')
+
     x_nopad = xgrid_nopad - Xc
     y_nopad = ygrid_nopad - Yc
     grid_nopad = np.stack([x_nopad, y_nopad], axis=-1)
-    #x = x_pix - Xc_padded
-    #y = y_pix - Yc_padded
-    #grid = np.stack([x, y], axis=-1)
 
     k1 = radialdistortparam1 if radialdistortparam1 is not None else 0.0
     k2 = radialDistortparam2 if radialDistortparam2 is not None else 0.0
@@ -231,7 +270,7 @@ def write_st_maps_from_params(write_dir=None,
     delta = redist_nopad - grid_nopad
     displacement = np.linalg.norm(delta, axis=-1)
     max_disp = ((np.max(displacement)) / max(w, h)) * 2
-    #print(f"Max displacement: {max_disp:.4f} pixels")
+    #print(f"Max displacement: {max_disp:.4f}")
     overscan = ((1.0 + max_disp) / 1.0)
     #print(f"Calculated overscan factor: {overscan:.4f}")
 
@@ -266,53 +305,13 @@ def write_st_maps_from_params(write_dir=None,
     undistort_map = to_nuke_stmap(undist_coords, w, h)
     distort_map = to_nuke_stmap(redist_coords, w, h)
 
-    def save_exr(filepath, map_array, orig_width, orig_height, min_x, max_x, min_y, max_y):
-        """
-        Save a 2-channel map as an OpenEXR file with custom data and display windows.
-
-        Args:
-            filepath (str): Output file path.
-            map_array (np.ndarray): Array of shape (H, W, 2).
-            orig_width (int): Original image width (display window).
-            orig_height (int): Original image height (display window).
-            min_x (int): X offset (in pixels) of the overscan grid's top-left relative to original image.
-            min_y (int): Y offset (in pixels) of the overscan grid's top-left relative to original image.
-        """
-        height, width = map_array.shape[:2]
-
-        # Display window: original image bounds
-        display_window_min = (0, 0)
-        display_window_max = (orig_width - 1, orig_height - 1)
-
-        # Data window: bounds of the overscan grid in original image coordinates
-        data_window_min = min_x, min_y # (int(min_x), int(min_y))
-        data_window_max = max_x, max_y #(int(min_x + width - 1), int(min_y + height - 1))
-
-        print(f"Saving EXR: {filepath}")
-        print(f"  map_array.shape: {map_array.shape}")
-        print(f"  display_window_min: {display_window_min}")
-        print(f"  display_window_max: {display_window_max}")
-        print(f"  data_window_min: {data_window_min}")
-        print(f"  data_window_max: {data_window_max}")
-
-        header = OpenEXR.Header(orig_width, orig_height)
-        header['displayWindow'] = Imath.Box2i(Imath.V2i(*display_window_min), Imath.V2i(*display_window_max))
-        header['dataWindow'] = Imath.Box2i(Imath.V2i(*data_window_min), Imath.V2i(*data_window_max))
-
-        FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
-        out = OpenEXR.OutputFile(filepath, header)
-        R = map_array[:, :, 0].astype(np.float32).tobytes()
-        G = map_array[:, :, 1].astype(np.float32).tobytes()
-        out.writePixels({'R': R, 'G': G})
-        out.close()
-        print(f"Saved: {filepath}")
 
     if write_dir and basename:
         # note - naming is reversed at the file system compared to calculation
         undistort_path = os.path.join(write_dir, f"{basename}_distort_map.exr")
         distort_path = os.path.join(write_dir, f"{basename}_undistort_map.exr")
-        save_exr(undistort_path, undistort_map, w, h, padded_w_xmin, padded_w_xmax, padded_h_ymin, padded_h_ymax)
-        save_exr(distort_path, distort_map, w, h, padded_w_xmin, padded_w_xmax, padded_h_ymin, padded_h_ymax)
+        save_st_exr(undistort_path, undistort_map, w, h, padded_w_xmin, padded_w_xmax, padded_h_ymin, padded_h_ymax)
+        save_st_exr(distort_path, distort_map, w, h, padded_w_xmin, padded_w_xmax, padded_h_ymin, padded_h_ymax)
 
         # Write a txt file with the parameters used
         params_path = os.path.join(write_dir, f"{basename}_st_map_params.txt")
@@ -463,98 +462,57 @@ def write_tca_maps_from_params(write_dir=None,
     Yc = h / 2.0
 
     # Pixel grid, centered at image center
-    x_pix, y_pix = np.meshgrid(np.arange(w), np.arange(h)[::-1], indexing='xy')
+    x_pix, y_pix = np.meshgrid(np.arange(w),
+                               np.arange(h),
+                               indexing='xy')
     x = x_pix - Xc
     y = y_pix - Yc
 
-    # Normalize as per Adobe's model (same as geometry distortion)
-    x_norm = x / (focal_length_x * Dmax)
-    y_norm = y / (focal_length_y * Dmax)
-    r2 = x_norm**2 + y_norm**2
+    grid = np.stack([x, y], axis=-1)
 
-    def distortion_params(k1, k2, k3):
-        return 1 + k1*r2 + k2*r2**2 + k3*r2**3
+
 
     # Red channel (vs green)
     k1_r = tca_redgreen_radial1 or 0.0
     k2_r = tca_redgreen_radial2 or 0.0
     k3_r = tca_redgreen_radial3 or 0.0
-    scale_red = distortion_params(k1_r, k2_r, k3_r)
-    map_x_red = x_norm * scale_red
-    map_y_red = y_norm * scale_red
+
+
+    red_distorted = get_geometry_distortion(
+        grid, k1_r, k2_r, k3_r, 0.0, 0.0, focal_length_x, focal_length_y, Dmax)
+    
+    # Green channel (reference channel, red and blue are distorted relative to it)
+    '''''
+    # Green channel
+    k1_g = tca_green_radial1 or 0.0
+    k2_g = tca_green_radial2 or 0.0
+    k3_g = tca_green_radial3 or 0.0
+
+    green_distorted = get_geometry_distortion(
+        grid, k1_g, k2_g, k3_g, 0.0, 0.0, focal_length_x, focal_length_y, Dmax)
+    '''
 
     # Blue channel (vs green)
     k1_b = tca_bluegreen_radial1 or 0.0
     k2_b = tca_bluegreen_radial2 or 0.0
     k3_b = tca_bluegreen_radial3 or 0.0
-    scale_blue = distortion_params(k1_b, k2_b, k3_b)
-    map_x_blue = x_norm * scale_blue
-    map_y_blue = y_norm * scale_blue
 
-    def to_st(x_map, y_map):
-        """
-        Convert normalized TCA coordinates back to pixel coordinates and then to S/T map.
 
-        Args:
-            x_map (np.ndarray): Normalized x coordinates.
-            y_map (np.ndarray): Normalized y coordinates.
+    blue_distorted = get_geometry_distortion(
+        grid, k1_b, k2_b, k3_b, 0.0, 0.0, focal_length_x, focal_length_y, Dmax)
+    
 
-        Returns:
-            np.ndarray: S/T map, shape (..., 2), dtype float32.
-        """
-        x_pix = x_map * (focal_length_x * Dmax) + Xc
-        y_pix = y_map * (focal_length_y * Dmax) + Yc
-        s = x_pix / w
-        t = (y_pix / h)
-        return np.stack([s, t], axis=-1).astype(np.float32)
+    
+    red_map = to_nuke_stmap(red_distorted, w, h)
+    #green_map = to_nuke_stmap(green_distorted, w, h)
+    blue_map = to_nuke_stmap(blue_distorted, w, h)
 
-    red_map = to_st(map_x_red, map_y_red)
-    blue_map = to_st(map_x_blue, map_y_blue)
 
-    def save_exr(filepath, map_array, orig_width, orig_height, min_x, min_y):
-        """
-        Save a 2-channel map as an OpenEXR file with custom data and display windows.
-
-        Args:
-            filepath (str): Output file path.
-            map_array (np.ndarray): Array of shape (H, W, 2).
-            orig_width (int): Original image width (display window).
-            orig_height (int): Original image height (display window).
-            min_x (int): X offset (in pixels) of the overscan grid's top-left relative to original image.
-            min_y (int): Y offset (in pixels) of the overscan grid's top-left relative to original image.
-        """
-        height, width = map_array.shape[:2]
-        print(f'width is {width}, height is {height}')
-
-        # Display window: original image bounds
-        display_window_min = (0, 0)
-        display_window_max = (orig_width - 1, orig_height - 1)
-
-        # Data window: bounds of the overscan grid in original image coordinates
-        data_window_min = (int(min_x), int(min_y))
-        data_window_max = (int(min_x + width - 1), int(min_y + height - 1))
-
-        print(f"Saving EXR: {filepath}")
-        print(f"  map_array.shape: {map_array.shape}")
-        print(f"  display_window_min: {display_window_min}")
-        print(f"  display_window_max: {display_window_max}")
-        print(f"  data_window_min: {data_window_min}")
-        print(f"  data_window_max: {data_window_max}")
-
-        header = OpenEXR.Header(orig_width, orig_height)
-        header['displayWindow'] = Imath.Box2i(Imath.V2i(*display_window_min), Imath.V2i(*display_window_max))
-        header['dataWindow'] = Imath.Box2i(Imath.V2i(*data_window_min), Imath.V2i(*data_window_max))
-
-        FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
-        out = OpenEXR.OutputFile(filepath, header)
-        R = map_array[:, :, 0].astype(np.float32).tobytes()
-        G = map_array[:, :, 1].astype(np.float32).tobytes()
-        out.writePixels({'R': R, 'G': G})
-        out.close()
 
     if write_dir and basename:
-        save_exr(os.path.join(write_dir, f"{basename}_tca_red.exr"), red_map, w, h, -Xc, -Yc)
-        save_exr(os.path.join(write_dir, f"{basename}_tca_blue.exr"), blue_map, w, h, -Xc, -Yc)
-        print("Saved TCA maps for R, B.")
+        save_st_exr(os.path.join(write_dir, f"{basename}_tca_red.exr"), red_map, w, h, 0, w-1, 0, h-1)
+        #save_st_exr(os.path.join(write_dir, f"{basename}_tca_green.exr"), green_map, w, h, 0, w-1, 0, h-1)
+        save_st_exr(os.path.join(write_dir, f"{basename}_tca_blue.exr"), blue_map, w, h, 0, w-1, 0, h-1)
+        print("Saved TCA maps for R, G, B.")
 
     return red_map, blue_map
