@@ -14,3 +14,4 @@ rapidfuzz
 OpenEXR
 Imath
 rawpy
+cv2

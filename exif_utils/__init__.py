@@ -1,6 +1,8 @@
 import os
 import exifread
 import sys
+import rawpy
+import cv2
 
 print("lcpvfxtools.exif_utils initialised")
 
@@ -124,15 +126,31 @@ def get_resolution_from_exif(rawfile=None):
     x_resolution = None
     y_resolution = None
     try:
-        import rawpy
         with rawpy.imread(rawfile) as raw:
             x_resolution, y_resolution = raw.raw_image_visible.shape[::-1]  # width, height
+
+
+
     except Exception:
         try:
-            import cv2
-            img = cv2.imread(rawfile, cv2.IMREAD_UNCHANGED)
-            if img is not None:
-                x_resolution, y_resolution = img.shape[1], img.shape[0]
+            with rawpy.imread(rawfile) as raw:
+                 xyz = raw.postprocess(
+                    output_color=rawpy.ColorSpace.XYZ,
+                    gamma=(1, 1),                # Linear
+                    no_auto_bright=True,         # Preserve superbrights
+                    output_bps=16,               # RawPy internal bit depth; final is float16
+                    use_camera_wb=True           # Use in-camera white balance
+                )
+                 y_resolution, x_resolution = xyz.shape[:2]
+
         except Exception:
-            pass
+
+            try:
+                img = cv2.imread(rawfile, cv2.IMREAD_UNCHANGED)
+                if img is not None:
+                    x_resolution, y_resolution = img.shape[1], img.shape[0]
+            except Exception:
+                print(f"Error reading resolution from {rawfile}.")
+                return None, None
+        
     return x_resolution, y_resolution
