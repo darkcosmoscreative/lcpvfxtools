@@ -630,7 +630,8 @@ class UIUtils(wx.Frame):
             cc_utils.write_exr_from_cameraraw(
                 write_dir=file_dir,
                 basename=file_basename,
-                raw_file_path=self.selected_file_path
+                raw_file_path=self.selected_file_path,
+                lens_dict=interface_lens_dict
 
             )
             dlg = wx.MessageDialog(self, "EXR file generated successfully.", "Success", wx.OK | wx.ICON_INFORMATION)

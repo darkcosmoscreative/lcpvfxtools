@@ -7,8 +7,15 @@ import rawpy
 
 print('lcpvfxtools.cc_utils initialised')
 
+# Matrix from ACES2065-1 (AP0) to ACEScg (AP1)
+AP0_to_AP1 = np.array([
+    [ 1.45143932, -0.23651075, -0.21492857],
+    [-0.07655377,  1.1762297 , -0.09967593],
+    [ 0.00831615, -0.00603245,  0.9977163 ]
+])
 
-def write_exr_from_cameraraw(write_dir, basename, raw_file_path):
+
+def write_exr_from_cameraraw(write_dir, basename, raw_file_path, lens_dict):
     """
     Converts a camera RAW file to an OpenEXR file in XYZ color space.
 
@@ -22,19 +29,19 @@ def write_exr_from_cameraraw(write_dir, basename, raw_file_path):
     """
     # Read and process RAW file
     with rawpy.imread(raw_file_path) as raw:
-        xyz = raw.postprocess(
-            output_color=rawpy.ColorSpace.XYZ,
+        aces = raw.postprocess(
+            output_color=rawpy.ColorSpace.ACES,
             gamma=(1, 1),                # Linear
             no_auto_bright=True,         # Preserve superbrights
             output_bps=16,               # RawPy internal bit depth; final is float16
             use_camera_wb=True           # Use in-camera white balance
         )
 
-    xyz = np.clip(xyz, 0.0, None)
+    aces = np.clip(aces, 0.0, None)
 
     # First scale (preserves midtones)
-    scale = np.percentile(xyz, 99.9)
-    xyz /= scale
+    scale = np.percentile(aces, 99.9)
+    aces /= scale
 
     # Then apply highlight rolloff (only for values >1.0)
     def highlight_rolloff(x, threshold=1.0, softness=6.0):
@@ -44,20 +51,36 @@ def write_exr_from_cameraraw(write_dir, basename, raw_file_path):
             threshold + np.log1p((x - threshold) * softness) / softness
         )
 
-    xyz = highlight_rolloff(xyz)
-    xyz *= 2.35
+    aces = highlight_rolloff(aces)
+    aces *= 2.35
+
+
+    # Assume aces is (H, W, 3)
+    h, w = aces.shape[:2]
+
+    # Reshape to (N, 3)
+    aces_flat = aces.reshape(-1, 3)
+
+    # Apply the matrix
+    aces_flat = aces_flat @ AP0_to_AP1.T  # Transpose the matrix for correct multiplication
+
+    # Reshape back to (H, W, 3)
+    aces = aces_flat.reshape(h, w, 3)
+
 
     # Split into R, G, B channels and convert to half-float bytes
-    r = xyz[:, :, 0].astype(np.float16).tobytes()
-    g = xyz[:, :, 1].astype(np.float16).tobytes()
-    b = xyz[:, :, 2].astype(np.float16).tobytes()
+    r = aces[:, :, 0].astype(np.float16).tobytes()
+    g = aces[:, :, 1].astype(np.float16).tobytes()
+    b = aces[:, :, 2].astype(np.float16).tobytes()
 
     # Image dimensions
-    height, width = xyz.shape[:2]
+    height, width = aces.shape[:2]
     header = OpenEXR.Header(width, height)
 
     # Set channel types: 16-bit half-float
+    
     half_chan = Imath.Channel(Imath.PixelType(Imath.PixelType.HALF))
+    
     header['channels'] = {
         'R': half_chan,
         'G': half_chan,
@@ -65,12 +88,13 @@ def write_exr_from_cameraraw(write_dir, basename, raw_file_path):
     }
 
     # Optional: embed basic metadata
-    #header['comments'] = f'Converted from RAW: {os.path.basename(raw_file_path)}'
+    #header['owner'] = str(lens_dict['cam_maker'])
 
     # Create output path
-    out_path = os.path.join(write_dir, f"{basename}_xyz.exr")
+    out_path = os.path.join(write_dir, f"{basename}_ACEScg.exr")
 
     # Write EXR
+    
     exr = OpenEXR.OutputFile(out_path, header)
     exr.writePixels({'R': r, 'G': g, 'B': b})
     exr.close()

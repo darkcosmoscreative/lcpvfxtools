@@ -104,7 +104,7 @@ python -m lcpvfxtools.ui_utils
    The UI will auto-populate camera make, model, lens, and available focal/aperture/distances from the LCP database.
 
 3. **Generate Correction Maps:**  
-   - **Generate EXR:** Converts the raw file to OpenEXR (XYZ color).
+   - **Generate EXR:** Converts the raw file to OpenEXR (ACEScg color).
    - **Generate Distort/Undistort ST Maps:** Creates distortion correction maps.
    - **Generate Vignette Map:** Creates a vignette gain map.
    - **Generate TCA ST Maps:** Creates chromatic aberration correction maps.
