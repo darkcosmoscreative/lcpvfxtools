@@ -50,12 +50,46 @@ class UIUtils(wx.Frame):
         """
         Set up the wxPython UI components and layout.
         """
-        panel = wx.Panel(self)
+        self.panel = wx.Panel(self)
+        panel = self.panel
         self.vbox = wx.BoxSizer(wx.VERTICAL)
 
-        # File selection row: label, button, and filename display
-        file_label = wx.StaticText(panel, label="Select Camera Raw File:")
-        self.vbox.Add(file_label, flag=wx.ALL, border=5)
+        # --- Source selection dropdown ---
+        source_label = wx.StaticText(panel, label="Source:")
+        self.vbox.Add(source_label, flag=wx.ALL, border=5)
+        self.source_choices = ["From File", "Manual Entry"]
+        self.source_dropdown = wx.ComboBox(panel, choices=self.source_choices, style=wx.CB_READONLY)
+        self.source_dropdown.SetSelection(0)
+        self.vbox.Add(self.source_dropdown, flag=wx.ALL, border=5)
+        self.source_dropdown.Bind(wx.EVT_COMBOBOX, self.on_source_change)
+
+        # --- Manual entry fields (hidden by default) ---
+        self.manual_panel = wx.Panel(panel)
+        manual_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.manual_directory_label = wx.StaticText(self.manual_panel, label="Output Directory:")
+        self.manual_directory_button = wx.Button(self.manual_panel, label="Select Directory")
+        self.manual_directory_button.Bind(wx.EVT_BUTTON, lambda event: self.select_write_directory())
+        self.manual_name_label = wx.StaticText(self.manual_panel, label="File Basename:")
+        self.manual_name_text = wx.TextCtrl(self.manual_panel, value="Custom_Basename")
+        self.manual_xres_label = wx.StaticText(self.manual_panel, label="X Resolution:")
+        self.manual_xres_text = wx.TextCtrl(self.manual_panel, value="4096")
+        self.manual_yres_label = wx.StaticText(self.manual_panel, label="Y Resolution:")
+        self.manual_yres_text = wx.TextCtrl(self.manual_panel, value="2160")
+        manual_sizer.Add(self.manual_directory_label, flag=wx.ALL, border=2)
+        manual_sizer.Add(self.manual_directory_button, flag=wx.EXPAND | wx.ALL, border=2)
+        manual_sizer.Add(self.manual_name_label, flag=wx.ALL, border=2)
+        manual_sizer.Add(self.manual_name_text, flag=wx.EXPAND | wx.ALL, border=2)
+        manual_sizer.Add(self.manual_xres_label, flag=wx.ALL, border=2)
+        manual_sizer.Add(self.manual_xres_text, flag=wx.EXPAND | wx.ALL, border=2)
+        manual_sizer.Add(self.manual_yres_label, flag=wx.ALL, border=2)
+        manual_sizer.Add(self.manual_yres_text, flag=wx.EXPAND | wx.ALL, border=2)
+        self.manual_panel.SetSizer(manual_sizer)
+        self.manual_panel.Hide()
+        self.vbox.Add(self.manual_panel, flag=wx.EXPAND | wx.ALL, border=5)
+
+        # --- File selection row: label, button, and filename display (hidden by default for manual mode) ---
+        self.file_label = wx.StaticText(panel, label="Select Camera Raw File:")
+        self.vbox.Add(self.file_label, flag=wx.ALL, border=5)
 
         self.file_button = wx.Button(panel, label="Browse")
         self.file_button.Bind(wx.EVT_BUTTON, self.select_file)
@@ -64,11 +98,13 @@ class UIUtils(wx.Frame):
         self.selected_file_label = wx.StaticText(panel, label="No file selected")
         self.vbox.Add(self.selected_file_label, flag=wx.ALL, border=5)
 
-        # Reload button (initially disabled)
         self.reload_button = wx.Button(panel, label="Reload from File")
         self.reload_button.Disable()
         self.reload_button.Bind(wx.EVT_BUTTON, self.reload_from_file)
         self.vbox.Add(self.reload_button, flag=wx.ALL, border=5)
+
+        self.vbox.Add(wx.StaticLine(panel), flag=wx.EXPAND | wx.ALL, border=10)
+
 
         # Camera Make dropdown
         self.camera_make_dropdown = wx.ComboBox(panel, style=wx.CB_READONLY)
@@ -154,6 +190,46 @@ class UIUtils(wx.Frame):
         self.selected_file_path = None
         self.selected_file_exif = None
 
+    def on_source_change(self, event):
+        """
+        Callback for when the source dropdown is changed.
+        Shows/hides manual entry fields and file selection widgets, then triggers enable_ui.
+        """
+        self.update_source_visibility()
+        self.Layout()
+        if self.source_dropdown.GetValue() == "Manual Entry":
+            self.populate_ui_for_manual_mode()
+        else:
+            self.enable_ui()
+
+        # Force layout update
+        self.vbox.Layout()
+        self.vbox.Fit(self.panel)
+        self.panel.Layout()
+        self.panel.Fit()
+        self.Layout()
+        self.Fit()
+
+    def update_source_visibility(self):
+        """
+        Show/hide manual entry and file selection widgets based on source selection.
+        """
+        mode = self.source_dropdown.GetValue()
+        if mode == "Manual Entry":
+            self.manual_panel.Show()
+            self.file_label.Hide()
+            self.file_button.Hide()
+            self.selected_file_label.Hide()
+            self.reload_button.Hide()
+            self.generate_exr_button.Hide()
+        else:
+            self.manual_panel.Hide()
+            self.file_label.Show()
+            self.file_button.Show()
+            self.selected_file_label.Show()
+            self.reload_button.Show()
+            self.generate_exr_button.Show()
+
     def on_exif_debug_toggle(self, event):
         """
         Callback for toggling the EXIF debug info pane.
@@ -223,6 +299,48 @@ class UIUtils(wx.Frame):
                 self.current_cam_make, self.current_cam_model, self.current_lens_model,
                 focal_length, focus_distance, aperture
             )
+
+    def select_write_directory(self):
+        """
+        Prompt the user to select a directory for writing output files.
+        Returns the selected directory path as a string, or None if cancelled.
+        """
+        with wx.DirDialog(self, "Select Output Directory", style=wx.DD_DEFAULT_STYLE) as dir_dialog:
+            if dir_dialog.ShowModal() == wx.ID_CANCEL:
+                return   # User cancelled
+            
+            self.manual_write_dir = dir_dialog.GetPath()
+
+
+    def populate_ui_for_manual_mode(self):
+        """
+        Populate the UI dropdowns for manual mode using the first available profile in the database.
+        """
+        if self.lens_db is None or not hasattr(self.lens_db, 'data') or self.lens_db.data is None:
+            return
+
+        df = self.lens_db.data
+        if len(df) == 0:
+            return
+
+        # Get the first row as a starting point
+        first_profile = df.iloc[0]
+        cam_make = first_profile['Make']
+        cam_model = first_profile['Model']
+        lens_model = first_profile['Lens']
+        focal_length = first_profile.get('FocalLength', None)
+        focus_distance = first_profile.get('FocusDistance', None)
+        aperture = first_profile.get('ApertureValue', None)
+
+        all_cam_makes, all_cam_models, all_lens_models = self.get_filtered_camera_lens_options(
+            self.lens_db, selected_cam_make=cam_make, selected_cam_model=cam_model
+        )
+
+        self.enable_ui(
+            all_cam_makes, all_cam_models, all_lens_models,
+            cam_make, cam_model, lens_model,
+            focal_length, focus_distance, aperture
+        )
             
     def reload_from_file(self, event):
         """
@@ -523,27 +641,33 @@ class UIUtils(wx.Frame):
     def generate_distort_maps(self, event):
         """
         Generate distortion and undistortion ST maps and show a dialog on completion.
-
-        Args:
-            event (wx.Event): The wxPython event object.
         """
-        #print("Generating Distort/Undistort ST Maps...")
-
-        # Get the selected values from the UI
         interface_lens_dict = self.get_lens_dict_from_interface()
         scores = db_utils.score_lens_profile(interface_lens_dict, self.lens_db)
 
-        # Get file directory and name from original file
-        if self.selected_file_path:
+        # Determine mode
+        mode = self.source_dropdown.GetValue()
+        if mode == "Manual Entry":
+            file_dir = getattr(self, "manual_write_dir", None)
+            file_basename = self.manual_name_text.GetValue()
+            try:
+                x_resolution = int(self.manual_xres_text.GetValue())
+                y_resolution = int(self.manual_yres_text.GetValue())
+            except Exception:
+                dlg = wx.MessageDialog(self, "Invalid resolution values.", "Error", wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
+        else:
+            if not self.selected_file_path:
+                dlg = wx.MessageDialog(self, "No file selected.", "Error", wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
             file_dir = os.path.dirname(self.selected_file_path)
             file_name = os.path.basename(self.selected_file_path)
             file_basename = os.path.splitext(file_name)[0]
-
-
-        # Get the x and y resolution from the selected file
-        if self.selected_file_path:
             x_resolution, y_resolution = exif_utils.get_resolution_from_exif(self.selected_file_path)
-
 
         best_profile = scores[0]['profile']
         focal_length_x = best_profile['FocalLengthX']
@@ -570,102 +694,99 @@ class UIUtils(wx.Frame):
     def generate_vignette_map(self, event):
         """
         Generate a vignette gain map and show a dialog on completion.
-
-        Args:
-            event (wx.Event): The wxPython event object.
         """
-        # Get the selected values from the UI
         interface_lens_dict = self.get_lens_dict_from_interface()
-        #print(interface_lens_dict)
         lens_scores = db_utils.score_lens_profile(interface_lens_dict, self.lens_db)
         filtered_scores = db_utils.filter_profiles_by_best_combo(lens_scores, self.lens_db)
         scores = db_utils.score_vignette_profiles(interface_lens_dict, filtered_scores)
 
-        '''
-        for _ in range(10):
-            print(f"Score {_}: {scores[_]}")
-        '''
-        
+        mode = self.source_dropdown.GetValue()
+        if mode == "Manual Entry":
+            file_dir = getattr(self, "manual_write_dir", None)
+            file_basename = self.manual_name_text.GetValue()
+            try:
+                x_resolution = int(self.manual_xres_text.GetValue())
+                y_resolution = int(self.manual_yres_text.GetValue())
+            except Exception:
+                dlg = wx.MessageDialog(self, "Invalid resolution values.", "Error", wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
+        else:
+            if not self.selected_file_path:
+                dlg = wx.MessageDialog(self, "No file selected.", "Error", wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
+            file_dir = os.path.dirname(self.selected_file_path)
+            file_name = os.path.basename(self.selected_file_path)
+            file_basename = os.path.splitext(file_name)[0]
+            x_resolution, y_resolution = exif_utils.get_resolution_from_exif(self.selected_file_path)
+
         if scores != []:
-            # Get file directory and name from original file
-            if self.selected_file_path:
-                file_dir = os.path.dirname(self.selected_file_path)
-                file_name = os.path.basename(self.selected_file_path)
-                file_basename = os.path.splitext(file_name)[0]
-
-
-            # Get the x and y resolution from the selected file
-            if self.selected_file_path:
-                x_resolution, y_resolution = exif_utils.get_resolution_from_exif(self.selected_file_path)
-
-
             best_profile = scores[0]['profile']
             focal_length_x = best_profile['FocalLengthX']
             focal_length_y = best_profile['FocalLengthY']
             vignette_param1 = best_profile['VignetteModelParam1']
             vignette_param2 = best_profile['VignetteModelParam2']
             vignette_param3 = best_profile['VignetteModelParam3']
-            
-            if isinstance(vignette_param1, float):
-                if not math.isnan(vignette_param1):
-                    cc_utils.write_vignette_map_from_params(
-                        write_dir=file_dir,
-                        basename=file_basename,
-                        x_resolution=x_resolution,
-                        y_resolution=y_resolution,
-                        focal_length_x=focal_length_x,
-                        focal_length_y=focal_length_y,
-                        vignette_param1=vignette_param1,
-                        vignette_param2=vignette_param2,
-                        vignette_param3=vignette_param3
-                    )
-                    dlg = wx.MessageDialog(self, "Vignette map generated successfully.", "Success", wx.OK | wx.ICON_INFORMATION)
-                    dlg.ShowModal()
-                    dlg.Destroy()
-                else:
-                    print("Vignette parameters not available for this profile.")
-                    dlg = wx.MessageDialog(self, "Profile does not have the required data for vignette map.", "Information", wx.OK | wx.ICON_ERROR)
-                    dlg.ShowModal()
-                    dlg.Destroy()
-
-        else:
-                print("Vignette parameters not available for this profile.")
+            if isinstance(vignette_param1, float) and not math.isnan(vignette_param1):
+                cc_utils.write_vignette_map_from_params(
+                    write_dir=file_dir,
+                    basename=file_basename,
+                    x_resolution=x_resolution,
+                    y_resolution=y_resolution,
+                    focal_length_x=focal_length_x,
+                    focal_length_y=focal_length_y,
+                    vignette_param1=vignette_param1,
+                    vignette_param2=vignette_param2,
+                    vignette_param3=vignette_param3
+                )
+                dlg = wx.MessageDialog(self, "Vignette map generated successfully.", "Success", wx.OK | wx.ICON_INFORMATION)
+                dlg.ShowModal()
+                dlg.Destroy()
+            else:
                 dlg = wx.MessageDialog(self, "Profile does not have the required data for vignette map.", "Information", wx.OK | wx.ICON_ERROR)
                 dlg.ShowModal()
                 dlg.Destroy()
+        else:
+            dlg = wx.MessageDialog(self, "Profile does not have the required data for vignette map.", "Information", wx.OK | wx.ICON_ERROR)
+            dlg.ShowModal()
+            dlg.Destroy()
 
     def generate_tca_maps(self, event):
         """
         Generate TCA (transverse chromatic aberration) maps and show a dialog on completion.
-
-        Args:
-            event (wx.Event): The wxPython event object.
         """
-        # Get the selected values from the UI
         interface_lens_dict = self.get_lens_dict_from_interface()
-        #print(interface_lens_dict)
         lens_scores = db_utils.score_lens_profile(interface_lens_dict, self.lens_db)
         filtered_scores = db_utils.filter_profiles_by_best_combo(lens_scores, self.lens_db)
         scores = db_utils.score_tca_profiles(interface_lens_dict, filtered_scores)
 
-        '''
-        for _ in range(10):
-            print(f"Score {_}: {scores[_]}")
-        '''
+        mode = self.source_dropdown.GetValue()
+        if mode == "Manual Entry":
+            file_dir = getattr(self, "manual_write_dir", None)
+            file_basename = self.manual_name_text.GetValue()
+            try:
+                x_resolution = int(self.manual_xres_text.GetValue())
+                y_resolution = int(self.manual_yres_text.GetValue())
+            except Exception:
+                dlg = wx.MessageDialog(self, "Invalid resolution values.", "Error", wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
+        else:
+            if not self.selected_file_path:
+                dlg = wx.MessageDialog(self, "No file selected.", "Error", wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
+                return
+            file_dir = os.path.dirname(self.selected_file_path)
+            file_name = os.path.basename(self.selected_file_path)
+            file_basename = os.path.splitext(file_name)[0]
+            x_resolution, y_resolution = exif_utils.get_resolution_from_exif(self.selected_file_path)
 
         if scores != []:
-            # Get file directory and name from original file
-            if self.selected_file_path:
-                file_dir = os.path.dirname(self.selected_file_path)
-                file_name = os.path.basename(self.selected_file_path)
-                file_basename = os.path.splitext(file_name)[0]
-
-
-            # Get the x and y resolution from the selected file
-            if self.selected_file_path:
-                x_resolution, y_resolution = exif_utils.get_resolution_from_exif(self.selected_file_path)
-
-
             best_profile = scores[0]['profile']
             focal_length_x = best_profile['FocalLengthX']
             focal_length_y = best_profile['FocalLengthY']
@@ -678,37 +799,32 @@ class UIUtils(wx.Frame):
             tca_bluegreen_radial1 = best_profile['TCA_BlueGreen_Radial1']
             tca_bluegreen_radial2 = best_profile['TCA_BlueGreen_Radial2']
             tca_bluegreen_radial3 = best_profile['TCA_BlueGreen_Radial3']
-            
-            if isinstance(tca_redgreen_radial1, float):
-                if not math.isnan(tca_redgreen_radial1):
-                    cc_utils.write_tca_maps_from_params(
-                        write_dir=file_dir,
-                        basename=file_basename,
-                        x_resolution=x_resolution,
-                        y_resolution=y_resolution,
-                        focal_length_x= focal_length_x,
-                        focal_length_y= focal_length_y,
-                        tca_redgreen_radial1=tca_redgreen_radial1,
-                        tca_redgreen_radial2=tca_redgreen_radial2,
-                        tca_redgreen_radial3=tca_redgreen_radial3,
-                        tca_green_radial1=tca_green_radial1,
-                        tca_green_radial2=tca_green_radial2,
-                        tca_green_radial3=tca_green_radial3,
-                        tca_bluegreen_radial1=tca_bluegreen_radial1,
-                        tca_bluegreen_radial2=tca_bluegreen_radial2,
-                        tca_bluegreen_radial3=tca_bluegreen_radial3
-                    )
-                    dlg = wx.MessageDialog(self, "TCA maps generated successfully.", "Success", wx.OK | wx.ICON_INFORMATION)
-                    dlg.ShowModal()
-                    dlg.Destroy()
-                else:
-                    print("TCA parameters not available for this profile.")
-                    dlg = wx.MessageDialog(self, "Profile does not have the required data for TCA maps.", "Information", wx.OK | wx.ICON_ERROR)
-                    dlg.ShowModal()
-                    dlg.Destroy()
-
+            if isinstance(tca_redgreen_radial1, float) and not math.isnan(tca_redgreen_radial1):
+                cc_utils.write_tca_maps_from_params(
+                    write_dir=file_dir,
+                    basename=file_basename,
+                    x_resolution=x_resolution,
+                    y_resolution=y_resolution,
+                    focal_length_x=focal_length_x,
+                    focal_length_y=focal_length_y,
+                    tca_redgreen_radial1=tca_redgreen_radial1,
+                    tca_redgreen_radial2=tca_redgreen_radial2,
+                    tca_redgreen_radial3=tca_redgreen_radial3,
+                    tca_green_radial1=tca_green_radial1,
+                    tca_green_radial2=tca_green_radial2,
+                    tca_green_radial3=tca_green_radial3,
+                    tca_bluegreen_radial1=tca_bluegreen_radial1,
+                    tca_bluegreen_radial2=tca_bluegreen_radial2,
+                    tca_bluegreen_radial3=tca_bluegreen_radial3
+                )
+                dlg = wx.MessageDialog(self, "TCA maps generated successfully.", "Success", wx.OK | wx.ICON_INFORMATION)
+                dlg.ShowModal()
+                dlg.Destroy()
+            else:
+                dlg = wx.MessageDialog(self, "Profile does not have the required data for TCA maps.", "Information", wx.OK | wx.ICON_ERROR)
+                dlg.ShowModal()
+                dlg.Destroy()
         else:
-            print("TCA parameters not available for this profile.")
             dlg = wx.MessageDialog(self, "Profile does not have the required data for TCA maps.", "Information", wx.OK | wx.ICON_ERROR)
             dlg.ShowModal()
             dlg.Destroy()
