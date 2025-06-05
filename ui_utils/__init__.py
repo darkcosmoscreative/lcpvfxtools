@@ -829,7 +829,18 @@ class UIUtils(wx.Frame):
             dlg.ShowModal()
             dlg.Destroy()
 
+
 if __name__ == "__main__":
+
     app = wx.App(False)
     frame = UIUtils(None, title="LCP VFX Tools")
+
+    # Add a File menu with Quit (for Cmd+Q on Mac)
+    menubar = wx.MenuBar()
+    file_menu = wx.Menu()
+    quit_item = file_menu.Append(wx.ID_EXIT, "Quit\tCtrl+Q" if sys.platform != "darwin" else "Quit\tCmd+Q")
+    menubar.Append(file_menu, "&File")
+    frame.SetMenuBar(menubar)
+    frame.Bind(wx.EVT_MENU, lambda evt: frame.Close(), quit_item)
+
     app.MainLoop()
