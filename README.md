@@ -25,7 +25,7 @@
 ## Nuke Usage
 - Generate from interface:
 
-<p align="center"><img width=400 src="https://private-user-images.githubusercontent.com/58688621/450642139-b2bac684-4542-4b08-943d-68acf4fd0436.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDg5Mzg1NTksIm5iZiI6MTc0ODkzODI1OSwicGF0aCI6Ii81ODY4ODYyMS80NTA2NDIxMzktYjJiYWM2ODQtNDU0Mi00YjA4LTk0M2QtNjhhY2Y0ZmQwNDM2LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA2MDMlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNjAzVDA4MTA1OVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTRlYmY4Yzc0Zjk5ZjMyYTMyZjVhNDUxMmRhZDYyOTU3ZDI4YjU0ZDlkMGY2YWNjOGY1MmUyOTEwYmRkYmEzZWYmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.LbRlfkagauwtXM4l9Y3BmblyKkmJjGIHUNaYaIY2Bjs"/></p>
+<p align="center"><img width=400 src="https://private-user-images.githubusercontent.com/58688621/451867286-aacab3b7-f596-4f0e-ae1d-cce30464c4f8.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDkxMjU4MzQsIm5iZiI6MTc0OTEyNTUzNCwicGF0aCI6Ii81ODY4ODYyMS80NTE4NjcyODYtYWFjYWIzYjctZjU5Ni00ZjBlLWFlMWQtY2NlMzA0NjRjNGY4LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA2MDUlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNjA1VDEyMTIxNFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTA1OThjMWY0MmNhZWFhZjE3ZjExMjMzNzJkMTVmZjZlMTZjZDYwNzE0MzU2ZjUzNjhiZjBlMTAyYzc3NGMzN2ImWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.D30WYUNNAfdLSEDtEX8XLc57cM8vFbsal9vhbAEJW7A"/></p>
 
 - Apply in Nuke:
 
@@ -93,7 +93,12 @@ python -m lcpvfxtools.ui_utils
 
 1. **Select a Camera Raw File:**  
    Click "Browse" and choose a supported raw file (`.cr2`, `.nef`, `.arw`, `.dng`).  
-   > `.cr3` files are not supported.
+   > While newer extensions such as`.cr3` and `.HEIC` files
+   > are not supported, Adobe's **Lightroom** can make non-
+   > desctructive DNG copies of almost any photo type.
+   > For users without Adobe toolsets, Adobe's Free DNG
+   > converter will convert most RAW file types.
+   > https://helpx.adobe.com/camera-raw/using/adobe-dng-converter.html
 
 2. **Review and Select Camera/Lens Profile:**  
    The UI will auto-populate camera make, model, lens, and available focal/aperture/distances from the LCP database.
