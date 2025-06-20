@@ -15,7 +15,7 @@ AP0_to_AP1 = np.array([
 ])
 
 
-def write_exr_from_cameraraw(write_dir, basename, raw_file_path, lens_dict):
+def write_exr_from_cameraraw(write_dir, basename, raw_file_path, lens_dict=None):
     """
     Converts a camera RAW file to an OpenEXR file in XYZ color space.
 
