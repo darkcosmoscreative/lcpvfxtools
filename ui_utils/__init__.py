@@ -278,10 +278,10 @@ class UIUtils(wx.Frame):
             self.update_exif_debug(exif_data)
 
             scores = db_utils.score_lens_profile(exif_data, self.lens_db)
-            
+            '''
             for _ in range(10):
                 print(f"Score {_}: {scores[_]}")
-            
+            '''
 
             self.current_cam_make = scores[0]['profile']['Make']
             self.current_cam_model = scores[0]['profile']['Model']
