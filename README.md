@@ -156,11 +156,16 @@ You can chain these utilities in your own scripts to process multiple files, e.g
 
 ```python
 import glob
-from lcpvfxtools.cc_utils import write_exr_from_cameraraw
+from lcpvfxtools import exif_utils as exif_utils
+from lcpvfxtools import cc_utils as cc_utils
+
 
 for raw_path in glob.glob("/my/raws/*.CR2"):
-    basename = os.path.splitext(os.path.basename(raw_path))[0]
-    write_exr_from_cameraraw("/my/output", basename, raw_path)
+   # extract a lens dict
+   exif_data = exif_utils.get_camera_lens_dict(raw_path)
+
+   basename = os.path.splitext(os.path.basename(raw_path))[0]
+   cc_utils.write_exr_from_cameraraw("/my/output", basename, raw_path, exif_data)
 ```
 
 ---
