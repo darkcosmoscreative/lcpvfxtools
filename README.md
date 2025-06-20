@@ -1,11 +1,11 @@
 # lcpvfxtools
 
-**lcpvfxtools** is a Python toolkit for working with Adobe LCP (Lens Correction Profile) files and camera raw images. It provides a wxPython-based graphical user interface (GUI) for selecting camera/lens profiles, generating correction maps (distortion, vignette, TCA), and converting camera raw files to OpenEXR format. The core correction and conversion utilities can also be used from the command line or in your own scripts for batch processing.
+**lcpvfxtools** is a Python toolkit for working with Adobe LCP (Lens Correction Profile) files and camera raw images. It provides a wxPython-based graphical user interface (GUI) for selecting camera/lens profiles, generating correction maps (distortion, vignette, TCA), and converting camera raw files to OpenEXR format in ACEScg colourspace. The core correction and conversion utilities can also be used from the command line or in your own scripts for batch processing.
 
 **The short goals are:**
  - **DSLR camera raw development for a VFX pipeline**
  - **Ensuring colour accuracy**
- - **Providing profile corrections for use in Nuke or other VFX softwares**
+ - **Providing nondestructive profile corrections for use in Nuke or other VFX softwares**
 
 ---
 
@@ -25,11 +25,9 @@
 ## Nuke Usage
 - Generate from interface:
 
-<p align="center"><img width=400 src="https://private-user-images.githubusercontent.com/58688621/451867286-aacab3b7-f596-4f0e-ae1d-cce30464c4f8.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDkxMjU4MzQsIm5iZiI6MTc0OTEyNTUzNCwicGF0aCI6Ii81ODY4ODYyMS80NTE4NjcyODYtYWFjYWIzYjctZjU5Ni00ZjBlLWFlMWQtY2NlMzA0NjRjNGY4LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA2MDUlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNjA1VDEyMTIxNFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTA1OThjMWY0MmNhZWFhZjE3ZjExMjMzNzJkMTVmZjZlMTZjZDYwNzE0MzU2ZjUzNjhiZjBlMTAyYzc3NGMzN2ImWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.D30WYUNNAfdLSEDtEX8XLc57cM8vFbsal9vhbAEJW7A"/></p>
+<p align="center"><img width=400 src="https://private-user-images.githubusercontent.com/58688621/451867286-aacab3b7-f596-4f0e-ae1d-cce30464c4f8.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NTA0MTEwMzQsIm5iZiI6MTc1MDQxMDczNCwicGF0aCI6Ii81ODY4ODYyMS80NTE4NjcyODYtYWFjYWIzYjctZjU5Ni00ZjBlLWFlMWQtY2NlMzA0NjRjNGY4LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA2MjAlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNjIwVDA5MTIxNFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTI4YWY4ODQyOGY3YmZhNzIxYjBhM2NiNjM0ZTg4MTA1ZTYzMjY5MTY2OWEwYzg1MDU1M2VjMzkyOGU3OTAwMjImWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.THBrDeCHzto2-tdhmghW8Wsya6wsW6BFfBphywPEwFE"/></p>
 
 - Apply in Nuke:
-
-<p align="center"><img width=500 src="https://private-user-images.githubusercontent.com/58688621/450638701-338b1ea1-596a-4e51-9513-5c435b55b894.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDg5MzgwNzIsIm5iZiI6MTc0ODkzNzc3MiwicGF0aCI6Ii81ODY4ODYyMS80NTA2Mzg3MDEtMzM4YjFlYTEtNTk2YS00ZTUxLTk1MTMtNWM0MzViNTViODk0LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA2MDMlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNjAzVDA4MDI1MlomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWRiYjViODE1ODAwODQzZDQ4MjRjMmM2ZTFiMjRmOWE1ZDMwYWVlZWIzM2Q3OGVkOTJmYjM5NDAwNGE1NTk4NGMmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.XE6HFIKYKIW1-7ubLMIT4jIMOML1wj6yRBWB4BDdkuA"/></p>
 
 <p align="center"><img width=500 src="https://private-user-images.githubusercontent.com/58688621/450638959-cc0fe96d-b709-4fac-9cf8-c78965104c56.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDg5MzgyMTEsIm5iZiI6MTc0ODkzNzkxMSwicGF0aCI6Ii81ODY4ODYyMS80NTA2Mzg5NTktY2MwZmU5NmQtYjcwOS00ZmFjLTljZjgtYzc4OTY1MTA0YzU2LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNTA2MDMlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjUwNjAzVDA4MDUxMVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWQwZTdkMjY1ZmYzOTUyYjg3NWVlYjBmYmZlODdlNjdmODFhY2FmNThmM2Q3NGEwNWQ4OWM1MmIwMTYxNDE2YmImWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0In0.2QoJ0dao-Irwzi_oBRg_53ZAD4CR33q_v62MTSX9iqI"/></p>
 
