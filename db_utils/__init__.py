@@ -1220,10 +1220,10 @@ def score_lens_profile(lens_dict, db):
                 #print(f'model similarity is {model_similarity}')
                 #print('3')
                 if model_similarity > 99.0:
-                    score += 15
+                    score += 18
                     reasons.append('High Camera model match')
                 elif model_similarity > 75.0:
-                    score += 5
+                    score += 2
                     reasons.append('Moderate Camera model match')
             else:
                 #print(f'somehow model {profile["Model"]} is not a string')
@@ -1233,10 +1233,10 @@ def score_lens_profile(lens_dict, db):
                 lens_similarity = ratio(lens_dict['lens_model'].lower(), profile['Lens'].lower())
                 #print('5')
                 if lens_similarity > 99.0:
-                    score += 30
+                    score += 35
                     reasons.append(f'High Lens model match of {lens_dict["lens_model"]} to {profile["Lens"]}')
                 elif lens_similarity > 75.0:
-                    score += 15
+                    score += 10
                     reasons.append('Moderate Lens model match')
 
             if isinstance(profile['FocalLength'], float) and isinstance(lens_dict['focal_length'], float):
