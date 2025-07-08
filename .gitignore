@@ -178,3 +178,7 @@ cython_debug/
 
 # Mac
 *.DS_Store
+
+# Tests
+tests/data/output/*
+!tests/data/output/.gitkeep
