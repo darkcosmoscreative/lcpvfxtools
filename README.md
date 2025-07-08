@@ -31,6 +31,10 @@
 
 <p align="center"><img width=500 src="https://github.com/user-attachments/assets/606e9389-8e5c-4db6-a967-ea8624e9c590"/></p>
 
+- Provided Example:
+
+<p align="center"><img width=500 src="https://github.com/user-attachments/assets/9bda24ca-8a55-4801-8c6e-8aa2fb46e7f6"/></p?>
+
 ## Installation
 
 1. **Clone the repository:**
