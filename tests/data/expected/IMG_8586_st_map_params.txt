@@ -1,0 +1,9 @@
+ST Map Generation Parameters
+Resolution: 5496 x 3670
+FocalLengthX: 2.073885
+FocalLengthY: 2.073885
+RadialDistortParam1: 0.309903
+RadialDistortParam2: 1.913331
+RadialDistortParam3: -11.308172
+TangentialDistortParam1: 0.0
+TangentialDistortParam2: 0.0
