@@ -1,11 +1,13 @@
 # lcpvfxtools
 
-**lcpvfxtools** is a Python toolkit for working with Adobe LCP (Lens Correction Profile) files and camera raw images. It provides a wxPython-based graphical user interface (GUI) for selecting camera/lens profiles, generating correction maps (distortion, vignette, TCA), and converting camera raw files to OpenEXR format in ACEScg colourspace. The core correction and conversion utilities can also be used from the command line or in your own scripts for batch processing.
+**lcpvfxtools** is a Python toolkit for working with Adobe LCP (Lens Correction Profile) files and camera raw images. It provides a wxPython-based graphical UI for selecting camera/lens profiles, generating correction maps (distortion, vignette, TCA), and converting camera raw files to OpenEXR format in ACEScg colourspace. The core correction and conversion utilities can also be used from the command line or in your own scripts for batch processing.
 
 **The short goals are:**
  - **DSLR camera raw development for a VFX pipeline**
  - **Ensuring colour accuracy**
  - **Providing nondestructive profile corrections for use in Nuke or other VFX softwares**
+
+*Note: This toolkit is designed for rectilinear camera images only. Fisheye, panoramic, or strongly distorted wide-angle projections are not currently supported.*
 
 ---
 
@@ -38,6 +40,9 @@
 ## Installation
 
 1. **Clone the repository:**
+
+This repository uses [Git LFS](https://git-lfs.github.com/) for large test files. Make sure Git LFS is installed **before cloning**:
+
 
    ```sh
    git clone https://github.com/darkcosmoscreative/lcpvfxtools.git
