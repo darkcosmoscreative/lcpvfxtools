@@ -2,6 +2,7 @@ import wx
 import os
 import sys
 import math
+import pandas as pd
 
 # initialise config from module on path
 current_dir = os.path.dirname(__file__)
@@ -41,7 +42,7 @@ class UIUtils(wx.Frame):
         self.lens_db = LensProfileDatabase(
             lcp_directory=cfg.LCP_DIR,
             pickle_file=cfg.PICKLE_FILE,
-            force_reload=False
+            force_reload=True
         )
 
         self.Show()
@@ -427,11 +428,18 @@ class UIUtils(wx.Frame):
             tuple: (focal_lengths, focus_distances, apertures) as sorted lists.
         """
         df = self.lens_db.data
-        filtered = df[
-            (df['Make'] == cam_make) &
-            (df['Model'] == cam_model) &
-            (df['Lens'] == lens_model)
-        ]
+        if cam_model != '':
+            filtered = df[
+                (df['Make'] == cam_make) &
+                (df['Model'] == cam_model) &
+                (df['Lens'] == lens_model)
+            ]
+        else:
+            filtered = df[
+                        (df['Make'] == cam_make) &
+                        (df['Lens'] == lens_model)
+            ]
+
         focal_lengths = sorted(filtered['FocalLength'].dropna().unique().tolist())
         focus_distances = sorted(filtered['FocusDistance'].dropna().unique().tolist())
         apertures = sorted(filtered['ApertureValue'].dropna().unique().tolist())
@@ -671,8 +679,14 @@ class UIUtils(wx.Frame):
             x_resolution, y_resolution = exif_utils.get_resolution_from_exif(self.selected_file_path)
 
         best_profile = scores[0]['profile']
-        focal_length_x = best_profile['FocalLengthX']
-        focal_length_y = best_profile['FocalLengthY']
+        if not pd.isna(best_profile['FocalLengthX']):
+            focal_length_x = best_profile['FocalLengthX']
+        else:
+            focal_length_x = 1.0
+        if not pd.isna(best_profile['FocalLengthY']):
+            focal_length_y = best_profile['FocalLengthY']
+        else:
+            focal_length_y = 1.0
         radial_distort_param1 = best_profile['RadialDistortParam1']
         radial_distort_param2 = best_profile['RadialDistortParam2']
         radial_distort_param3 = best_profile['RadialDistortParam3']
@@ -726,8 +740,15 @@ class UIUtils(wx.Frame):
 
         if scores != []:
             best_profile = scores[0]['profile']
-            focal_length_x = best_profile['FocalLengthX']
-            focal_length_y = best_profile['FocalLengthY']
+            if not pd.isna(best_profile['FocalLengthX']):
+                focal_length_x = best_profile['FocalLengthX']
+            else:
+                focal_length_x = 1.0
+            if not pd.isna(best_profile['FocalLengthY']):
+                focal_length_y = best_profile['FocalLengthY']
+            else:
+                focal_length_y = 1.0
+
             vignette_param1 = best_profile['VignetteModelParam1']
             vignette_param2 = best_profile['VignetteModelParam2']
             vignette_param3 = best_profile['VignetteModelParam3']
@@ -789,8 +810,15 @@ class UIUtils(wx.Frame):
 
         if scores != []:
             best_profile = scores[0]['profile']
-            focal_length_x = best_profile['FocalLengthX']
-            focal_length_y = best_profile['FocalLengthY']
+            if not pd.isna(best_profile['FocalLengthX']):
+                focal_length_x = best_profile['FocalLengthX']
+            else:
+                focal_length_x = 1.0
+            if not pd.isna(best_profile['FocalLengthY']):
+                focal_length_y = best_profile['FocalLengthY']
+            else:
+                focal_length_y = 1.0
+
             tca_redgreen_radial1 = best_profile['TCA_RedGreen_Radial1']
             tca_redgreen_radial2 = best_profile['TCA_RedGreen_Radial2']
             tca_redgreen_radial3 = best_profile['TCA_RedGreen_Radial3']

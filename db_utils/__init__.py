@@ -1,4 +1,5 @@
 import os
+import math
 import sys
 import xml.etree.ElementTree as ET
 import pandas as pd
@@ -43,7 +44,12 @@ class LensProfileDatabase:
             pd.set_option('display.max_columns', 10)
             pd.set_option('display.width', 1000)
             self.data['Make'] = self.data['Make'].str.strip()
-            self.data['Model'] = self.data['Model'].str.strip()
+            try:
+                self.data['Model'] = self.data['Model'].str.strip()
+            except:
+                print('Model column not found, skipping strip')
+                #self.data['Model'] = ''
+                self.data['Model'] = self.data['Make'] # attempting to use make for missing model
             self.data['Lens'] = self.data['Lens'].str.strip()
             self.save_to_pickle()
 
@@ -57,9 +63,14 @@ class LensProfileDatabase:
         records = []
         for root, _, files in os.walk(self.lcp_directory):
             for file in files:
+                # if file.endswith("SIGMA (SIGMA 24-105mm F4 DG OS HSM A013) - RAW.lcp"):
+                #     path = os.path.join(root, file)
+                #     records.extend(self._extract_lcp_data(path))
+
                 if file.endswith(".lcp"):
                     path = os.path.join(root, file)
                     records.extend(self._extract_lcp_data(path))
+
         return pd.DataFrame(records)
 
     def _strip_namespace(self, data):
@@ -93,6 +104,15 @@ class LensProfileDatabase:
         Returns:
             list: List of dictionaries, each representing a lens profile record.
         """
+        inconsistent_keys = [
+            'Model',
+            'ImageXCenter',
+            'ImageYCenter',
+            'FocalLengthX',
+            'FocalLengthY'
+        ]
+
+
         records = []
         with open(lcp_path, 'r') as file:
             xml_data = file.read()
@@ -104,6 +124,7 @@ class LensProfileDatabase:
             # Check the type of each value
             if isinstance(one_item, dict):
                 record = {}
+                record['Model'] = ''
                 has_tca = False
                 
                 for key, value in one_item.items():
@@ -120,6 +141,8 @@ class LensProfileDatabase:
                                 if desckey == 'Make':
                                     #print(f'make is {descvalue}')
                                     record['Make'] = descvalue
+                                    if record['Model'] == '':
+                                        record['Model'] = descvalue  # if model is empty, use make
                                 elif desckey == 'Model':
                                     #print(f'model is {descvalue}')
                                     record['Model'] = descvalue
@@ -132,6 +155,8 @@ class LensProfileDatabase:
                                     record['FocusDistance'] = float(descvalue)
                                 elif desckey == 'ApertureValue':
                                     record['ApertureValue'] = float(descvalue)
+                                elif desckey == 'LensPrettyName':
+                                    record['LensPrettyName'] = descvalue
                         
                     
                                 # perspective model
@@ -486,6 +511,8 @@ class LensProfileDatabase:
                         if desckey == 'Make':
                             #print(f'make is {descvalue}')
                             record['Make'] = descvalue
+                            if record['Model'] == '':
+                                record['Model'] = descvalue # attempting to use make for missing model
                         elif desckey == 'Model':
                             #print(f'model is {descvalue}')
                             record['Model'] = descvalue
@@ -498,6 +525,8 @@ class LensProfileDatabase:
                             record['FocusDistance'] = float(descvalue)
                         elif desckey == 'ApertureValue':
                             record['ApertureValue'] = float(descvalue)
+                        elif desckey == 'LensPrettyName':
+                            record['LensPrettyName'] = descvalue
                 
             
                         # perspective model
@@ -732,6 +761,16 @@ class LensProfileDatabase:
                             pass
 
                 if record != {}:
+                    # tidying
+                    if record['Make'] == '':
+                        record['Make'] = record['Model']  # if make is empty, use model
+
+                    for one_key in inconsistent_keys:
+                        if one_key not in record:
+                            record[one_key] = None
+
+
+
                     records.append(record)
                     #print(record)
                 
@@ -950,6 +989,8 @@ class LensProfileDatabase:
         """
         available_data = {}
         params = [
+            "LensPrettyName",
+            "ImageXCenter", "ImageYCenter", "FocalLengthX", "FocalLengthY",
             "RadialDistortParam1", "RadialDistortParam2", "RadialDistortParam3",
             "VignetteModelParam1", "VignetteModelParam2", "VignetteModelParam3",
             "TCA_RedGreen_Radial1", "TCA_RedGreen_Radial2", "TCA_RedGreen_Radial3",
@@ -999,15 +1040,27 @@ class LensProfileDatabase:
         '''
         best_profile = scored[0]['profile']
         locked_make = best_profile['Make']
-        locked_model = best_profile['Model']
+        if best_profile['Model'] != ''and pd.notna(best_profile['Model']):
+        
+            locked_model = best_profile['Model']
+        else:
+            locked_model = ''
         locked_lens = best_profile['Lens']
 
         # 2. Gather all profiles for the locked combo
-        df = self.data[
-            (self.data['Make'].str.lower() == locked_make.lower()) &
-            (self.data['Model'].str.lower() == locked_model.lower()) &
-            (self.data['Lens'].str.lower() == locked_lens.lower())
-        ]
+        if locked_model != '':
+            print(f'locked model is {locked_model}')
+        
+            df = self.data[
+                (self.data['Make'].str.lower() == locked_make.lower()) &
+                (self.data['Model'].str.lower() == locked_model.lower()) &
+                (self.data['Lens'].str.lower() == locked_lens.lower())
+            ]
+        else:
+            df = self.data[
+                (self.data['Make'].str.lower() == locked_make.lower()) &
+                (self.data['Lens'].str.lower() == locked_lens.lower())
+            ]
 
         if df.empty:
             print('No profiles found for locked combo')
@@ -1056,9 +1109,9 @@ class LensProfileDatabase:
             "Make": locked_make,
             "Model": locked_model,
             "Lens": locked_lens,
-            "FocalLength": nearest['FocalLength'],
-            "FocusDistance": nearest['FocusDistance'],
-            "ApertureValue": nearest['ApertureValue'],
+            "FocalLength": float(nearest['FocalLength']), #attempting to get away from numpy array returns
+            "FocusDistance": float(nearest['FocusDistance']),
+            "ApertureValue": float(nearest['ApertureValue']),
             **available_data
         }
 
@@ -1298,32 +1351,32 @@ def demo():
     db = LensProfileDatabase(lcp_directory=cfg.LCP_DIR,
                              pickle_file=cfg.PICKLE_FILE,
                              force_reload=True)
-    '''
-    profile = db.find_lens_profile(make="Canon",
-                                   model="Canon EOS R",
-                                   lens="RF28-70mm F2 L USM",
-                                   focal_length=28.0,
-                                   focus_distance=10000.0,
-                                   aperture_value=6.0,
-                                   interpolate=False)
+
+    # profile = db.find_lens_profile(make="Canon",
+    #                                model="Canon EOS R",
+    #                                lens="RF28-70mm F2 L USM",
+    #                                focal_length=28.0,
+    #                                focus_distance=10000.0,
+    #                                aperture_value=6.0,
+    #                                interpolate=False)
     
     
-    profile2 = db.find_lens_profile(make='Canon',
-                                   model='Canon EOS 5D Mark II',
-                                   lens='EF24-70mm f/2.8L II USM',
-                                   focal_length=24.0,
-                                   focus_distance=0.37,
-                                   aperture_value=6.918863,
-                                   interpolate=False)
+    # profile2 = db.find_lens_profile(make='Canon',
+    #                                model='Canon EOS 5D Mark II',
+    #                                lens='EF24-70mm f/2.8L II USM',
+    #                                focal_length=24.0,
+    #                                focus_distance=0.37,
+    #                                aperture_value=6.918863,
+    #                                interpolate=False)
     
-    profile3 = db.find_lens_profile(make='Canon',
-                                   model='Canon EOS 5D Mark II',
-                                   lens='EF24-70mm f/2.8L II USM',
-                                   focal_length=24.0,
-                                   focus_distance=0.69,
-                                   aperture_value=6.918863,
-                                   interpolate=False)
-    '''
+    # profile3 = db.find_lens_profile(make='Canon',
+    #                                model='Canon EOS 5D Mark II',
+    #                                lens='EF24-70mm f/2.8L II USM',
+    #                                focal_length=24.0,
+    #                                focus_distance=0.69,
+    #                                aperture_value=6.918863,
+    #                                interpolate=False)
+
     profile4 = db.find_lens_profile(cam_maker='Canon',
                                    cam_model='Canon EOS 5D Mark II',
                                    lens_model='EF24-70mm f/2.8L II USM',
@@ -1339,12 +1392,21 @@ def demo():
                                    focus_distance=0.3,
                                    aperture_value=2.970854,
                                    interpolate=False)
+
+    profile6 = db.find_lens_profile(cam_maker='SIGMA',
+                                   cam_model='SIGMA',
+                                   lens_model='24.0-105.0 mm',
+                                   focal_length=24.0,
+                                   focus_distance=10000.0,
+                                   aperture_value=24.0,
+                                   interpolate=False)
     
     #print(profile)
     #print(profile2)
     #print(profile3)
     print(profile4)
     print(profile5)
+    print(profile6)
 
 if __name__ == '__main__':
     print('Run "demo" to test the LensProfileDatabase class.')
