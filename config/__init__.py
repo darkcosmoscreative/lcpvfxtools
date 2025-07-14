@@ -1,7 +1,7 @@
 print('lcpvfxtools.config initialised')
 
 # Other constants
-SUPPORTED_RAW_FORMATS = ["cr2", "nef", "arw", "dng"]
+SUPPORTED_RAW_FORMATS = ["cr2", "nef", "arw", "dng", "rw2"]
 
 # lcpvfxtools/config/__init__.py
 

@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 import OpenEXR
 import Imath
@@ -6,6 +7,14 @@ import rawpy
 
 
 print('lcpvfxtools.cc_utils initialised')
+
+# initialise config from module on path
+current_dir = os.path.dirname(__file__)
+module_root = os.path.abspath(os.path.join(current_dir, '../..'))
+if module_root not in sys.path:
+    sys.path.append(module_root)
+
+from lcpvfxtools import config as cfg
 
 # Matrix from ACES2065-1 (AP0) to ACEScg (AP1)
 AP0_to_AP1 = np.array([
@@ -27,6 +36,16 @@ def write_exr_from_cameraraw(write_dir, basename, raw_file_path, lens_dict=None)
     Returns:
         str: Path to the written EXR file.
     """
+    # get extension and check raw file has valid extension using config global
+    _, ext = os.path.splitext(raw_file_path)
+    ext = ext[1:].lower()
+    if ext in cfg.SUPPORTED_RAW_FORMATS:
+    
+       pass
+    else:
+        print(f"Unsupported RAW file format: {ext}. Supported formats are: {cfg.SUPPORTED_RAW_FORMATS}")
+        return None
+
     # Read and process RAW file
     with rawpy.imread(raw_file_path) as raw:
         aces = raw.postprocess(
