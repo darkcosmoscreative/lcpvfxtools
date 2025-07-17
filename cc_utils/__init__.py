@@ -563,3 +563,36 @@ def write_tca_maps_from_params(write_dir=None,
         print("Saved TCA maps for R, G, B.")
 
     return red_map, blue_map
+
+
+def save_test_exr_new(filepath):
+    height, width = 256, 256
+
+    # Create a color ramp pattern
+    ramp = np.linspace(0, 1, width, dtype=np.float32)
+    RGB = np.zeros((height, width, 3), dtype=np.float32)
+    RGB[:, :, 0] = ramp  # Red channel ramp
+    RGB[:, :, 1] = ramp[::-1]  # Green channel reversed ramp
+    RGB[:, :, 2] = np.linspace(0, 1, height, dtype=np.float32)[:, None]  # Blue vertical ramp
+
+    # Prepare channels dictionary (split into R, G, B)
+    channels = {"RGB": RGB}
+
+    # Prepare header dictionary (channels as a list)
+    header = {
+        "compression": OpenEXR.ZIP_COMPRESSION,
+        "type": OpenEXR.scanlineimage
+    }
+
+    # Write EXR using new API
+    with OpenEXR.File(header, channels) as outfile:
+        outfile.write(filepath)
+
+    print(f"Test EXR saved to {filepath}")
+
+if __name__ == "__main__":
+    up_navigation = os.path.abspath(os.path.join(current_dir, '..'))
+    output_dir = os.path.join(up_navigation, "tests", "data", "output")
+    test_filename = os.path.join(output_dir, "test_pattern_newapi.exr")
+    print(f"Saving test EXR to {test_filename}")
+    save_test_exr_new(test_filename)
