@@ -26,7 +26,7 @@ AP0_to_AP1 = np.array([
 
 def write_exr_from_cameraraw(write_dir, basename, raw_file_path, lens_dict=None):
     """
-    Converts a camera RAW file to an OpenEXR file in XYZ color space.
+    Converts a camera RAW file to an OpenEXR file in ACEScg color space using the new OpenEXR API.
 
     Args:
         write_dir (str): Directory to save the output EXR file.
@@ -86,37 +86,26 @@ def write_exr_from_cameraraw(write_dir, basename, raw_file_path, lens_dict=None)
     # Reshape back to (H, W, 3)
     aces = aces_flat.reshape(h, w, 3)
 
+    # Prepare channels dictionary for new OpenEXR API
+    channels = {"RGB": aces.astype(np.float32)}
 
-    # Split into R, G, B channels and convert to half-float bytes
-    r = aces[:, :, 0].astype(np.float16).tobytes()
-    g = aces[:, :, 1].astype(np.float16).tobytes()
-    b = aces[:, :, 2].astype(np.float16).tobytes()
-
-    # Image dimensions
-    height, width = aces.shape[:2]
-    header = OpenEXR.Header(width, height)
-
-    # Set channel types: 16-bit half-float
-    
-    half_chan = Imath.Channel(Imath.PixelType(Imath.PixelType.HALF))
-    
-    header['channels'] = {
-        'R': half_chan,
-        'G': half_chan,
-        'B': half_chan
+    # Prepare header dictionary (minimal, no channels key)
+    header = {
+        "compression": OpenEXR.ZIP_COMPRESSION,
+        "type": OpenEXR.scanlineimage,
     }
 
-    # Optional: embed basic metadata
-    #header['owner'] = str(lens_dict['cam_maker'])
+    if lens_dict:
+        for lens_key, lens_value in lens_dict.items():
+            if lens_value is not None:
+                header[f'exif/2/{lens_key}'] = str(lens_value)
 
     # Create output path
     out_path = os.path.join(write_dir, f"{basename}_ACEScg.exr")
 
-    # Write EXR
-    
-    exr = OpenEXR.OutputFile(out_path, header)
-    exr.writePixels({'R': r, 'G': g, 'B': b})
-    exr.close()
+    # Write EXR using new API
+    with OpenEXR.File(header, channels) as outfile:
+        outfile.write(out_path)
 
     print(f"[✓] Wrote: {out_path}")
     return out_path
@@ -570,18 +559,19 @@ def save_test_exr_new(filepath):
 
     # Create a color ramp pattern
     ramp = np.linspace(0, 1, width, dtype=np.float32)
-    RGB = np.zeros((height, width, 3), dtype=np.float32)
-    RGB[:, :, 0] = ramp  # Red channel ramp
-    RGB[:, :, 1] = ramp[::-1]  # Green channel reversed ramp
-    RGB[:, :, 2] = np.linspace(0, 1, height, dtype=np.float32)[:, None]  # Blue vertical ramp
+    img = np.zeros((height, width, 3), dtype=np.float32)
+    img[:, :, 0] = ramp  # Red channel ramp
+    img[:, :, 1] = ramp[::-1]  # Green channel reversed ramp
+    img[:, :, 2] = np.linspace(0, 1, height, dtype=np.float32)[:, None]  # Blue vertical ramp
 
     # Prepare channels dictionary (split into R, G, B)
-    channels = {"RGB": RGB}
+    channels = {"RGB": img}
 
     # Prepare header dictionary (channels as a list)
     header = {
         "compression": OpenEXR.ZIP_COMPRESSION,
-        "type": OpenEXR.scanlineimage
+        "type": OpenEXR.scanlineimage,
+        "custominfo": str("Test EXR with new API")
     }
 
     # Write EXR using new API

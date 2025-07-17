@@ -97,7 +97,50 @@ def get_camera_lens_dict(rawfile=None):
                     except:
                         distance = None
             elif('retty' in f'{tag}'):
-                print(f'Pretty name: {value}')
+                #print(f'Pretty name: {value}')
+                pass
+            elif('ExposureTime' in f'{tag}'):
+                #print(f'Exposure time: {value}')
+                exposure_time = str(value)
+            elif('FNumber' in f'{tag}'):
+                #print(f'FNumber: {value}')
+                fnumber = str(value)
+            elif('ExposureProgram' in f'{tag}'):
+                #print(f'Exposure program: {value}')
+                exposure_program = str(value)
+            elif('ISOSpeedRatings' in f'{tag}'):
+                #print(f'ISO speed ratings: {value}')
+                iso_speed = str(value)
+            elif('DateTimeOriginal' in f'{tag}'):
+                #print(f'DateTimeOriginal: {value}')
+                date_time_original = str(value)
+            elif('ShutterSpeedValue' in f'{tag}'):
+                #print(f'ShutterSpeedValue: {value}')
+                shutter_speed_value = str(value)
+            elif('ExposureBiasValue' in f'{tag}'):
+                #print(f'ExposureBiasValue: {value}')
+                exposure_bias_value = str(value)
+            elif('MeteringMode' in f'{tag}'):
+                #print(f'MeteringMode: {value}')
+                metering_mode = str(value)
+            elif('Flash' in f'{tag}'): 
+                #print(f'Flash: {value}')
+                flash = str(value)
+            elif('ExposureMode' in f'{tag}'):
+                #print(f'ExposureMode: {value}')
+                exposure_mode = str(value)
+            elif('WhiteBalance' in f'{tag}'):
+                #print(f'WhiteBalance: {value}')
+                white_balance = str(value)
+            elif('BracketMode' in f'{tag}'):
+                #print(f'BracketMode: {value}')
+                bracket_mode = str(value)
+            elif('BracketValue' in f'{tag}'):
+                #print(f'BracketValue: {value}')
+                bracket_value = str(value)
+            elif('BracketShotNumber' in f'{tag}'):
+                #print(f'BracketShotNumber: {value}')
+                bracket_shot_number = str(value)
             else:
                 #print(f'Unknown tag: {tag} = {value}')
                 pass
@@ -111,6 +154,36 @@ def get_camera_lens_dict(rawfile=None):
         lens_dict['focal_length'] = focal_length
         lens_dict['aperture'] = aperture
         lens_dict['distance'] = distance
+
+        if exposure_time:
+            lens_dict['exposure_time'] = exposure_time
+        if fnumber:
+            lens_dict['fnumber'] = fnumber
+        if exposure_program:
+            lens_dict['exposure_program'] = exposure_program
+        if iso_speed:
+            lens_dict['iso_speed'] = iso_speed
+        if date_time_original:
+            lens_dict['date_time_original'] = date_time_original
+        if shutter_speed_value:
+            lens_dict['shutter_speed_value'] = shutter_speed_value
+        if exposure_bias_value:
+            lens_dict['exposure_bias_value'] = exposure_bias_value
+        if metering_mode:
+            lens_dict['metering_mode'] = metering_mode
+        if flash:
+            lens_dict['flash'] = flash
+        if exposure_mode:
+            lens_dict['exposure_mode'] = exposure_mode
+        if white_balance:
+            lens_dict['white_balance'] = white_balance
+        if bracket_mode:
+            lens_dict['bracket_mode'] = bracket_mode
+        if bracket_value:
+            lens_dict['bracket_value'] = bracket_value
+        if bracket_shot_number:
+            lens_dict['bracket_shot_number'] = bracket_shot_number
+
     return lens_dict
 
 def get_resolution_from_exif(rawfile=None):
