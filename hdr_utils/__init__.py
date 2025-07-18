@@ -107,8 +107,8 @@ def read_exr_with_display_window(filepath):
         img = infile.channels()["RGB"].pixels
         header = infile.header()
         display_window = header.get("displayWindow", None)
-        # data_window = header.get("dataWindow", None)
-    return img, display_window
+        data_window = header.get("dataWindow", None)
+    return img, display_window, data_window
 
 def find_global_maps(input_dir):
     """Finds the undistort and vignette maps in the directory."""
@@ -204,18 +204,21 @@ def merge_hdr_opencv(images, exposures, max_val=2.36, align=True):
 
     return hdr_rgb
 
-def save_exr_with_display_window(filepath, img, display_window):
-    """Save numpy array as EXR using new API, with optional display window."""
+def save_exr_with_display_window(filepath, img, display_window, data_window=None):
+    """Save numpy array as EXR using new API, with display and data window."""
     channels = {"RGB": img.astype(np.float32)}
     header = {
         "compression": OpenEXR.ZIP_COMPRESSION,
         "type": OpenEXR.scanlineimage,
     }
-    h, w = img.shape[:2]
     if display_window is not None:
         header["displayWindow"] = display_window
-        # Correct: dataWindow as ((xmin, ymin), (xmax, ymax))
-        header["dataWindow"] = ( (0, 0), (w-1, h-1) )
+    if data_window is not None:
+        header["dataWindow"] = data_window
+    else:
+        # Default: full image
+        h, w = img.shape[:2]
+        header["dataWindow"] = ((0, 0), (w-1, h-1))
     with OpenEXR.File(header, channels) as outfile:
         outfile.write(filepath)
     print(f"[✓] Saved merged EXR: {filepath}")
@@ -246,18 +249,18 @@ def process_hdr(input_dir, mode="debevec"):
     stmap, display_window = None, None
     vignette = None
     if stmap_path:
-        stmap, display_window = read_exr_with_display_window(stmap_path)
+        stmap, display_window, data_window = read_exr_with_display_window(stmap_path)
         stmap = stmap[..., :2]  # Use first two channels for STmap
         stmap_flipped = stmap.copy()
         stmap_flipped[..., 1] = 1.0 - stmap_flipped[..., 1]
     if vignette_path:
-        vignette, _ = read_exr_with_display_window(vignette_path)
+        vignette, _, __ = read_exr_with_display_window(vignette_path)
 
     # --- Read, correct, and pad images ---
     images = []
     exposures = []
     for f in exr_files:
-        img, _ = read_exr_with_display_window(f)
+        img, _, __= read_exr_with_display_window(f)
         if vignette is not None:
             img = apply_vignette(img, vignette)
         if display_window is not None:
@@ -283,7 +286,7 @@ def process_hdr(input_dir, mode="debevec"):
         raise ValueError(f"Unsupported merge mode: {mode}")
 
     out_path = os.path.join(input_dir, "HDR_merged.exr")
-    save_exr_with_display_window(out_path, merged, display_window)
+    save_exr_with_display_window(out_path, merged, display_window, data_window)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Merge bracketed EXRs into HDR.")
