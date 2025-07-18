@@ -55,6 +55,20 @@ def get_camera_lens_dict(rawfile=None):
     focal_length = None
     aperture = None
     distance = None
+    exposure_time = None
+    fnumber = None
+    exposure_program = None
+    iso_speed = None
+    date_time_original = None
+    shutter_speed_value = None
+    exposure_bias_value = None
+    metering_mode = None
+    flash = None
+    exposure_mode = None
+    white_balance = None
+    bracket_mode = None
+    bracket_value = None
+    bracket_shot_number = None
 
     if rawfile and os.path.exists(rawfile):
         exif = read_exif_data(rawfile)
