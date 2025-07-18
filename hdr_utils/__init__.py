@@ -45,7 +45,6 @@ def compute_weights(image, weighting='tent', min_val=0.001, max_val=2.36):
         )
         weights = np.clip(weights, 0.0, None)  # clamp negatives
         return weights
-    
 
     else:
         raise ValueError(f"Unsupported weighting method: {weighting}")
@@ -88,9 +87,6 @@ def merge_hdr_linear(images, times, weighting='tent', min_val=0.001, max_val=2.3
 
     return hdr
 
-
-
-
 def read_exr_with_metadata(filepath):
     """Read EXR and return image and metadata."""
     print(f"Reading EXR: {filepath}")
@@ -99,16 +95,64 @@ def read_exr_with_metadata(filepath):
         metadata = infile.header()
     return img, metadata
 
-def group_brackets(exr_files):
-    """Group EXRs by bracket (e.g., exposure time). Returns list of lists."""
-    brackets = {}
-    for f in exr_files:
-        _, meta = read_exr_with_metadata(f)
-        # Example: use exposure time as key
-        exposure = meta.get("exr/exif/2/exposure_time", None)
-        if exposure is not None:
-            brackets.setdefault(exposure, []).append(f)
-    return list(brackets.values())
+def read_exr_with_display_window(filepath):
+    """
+    Read EXR and return image, display window, and data window.
+    Returns:
+        img: np.ndarray, image data
+        display_window: ((xmin, ymin), (xmax, ymax))
+        data_window: ((oxmin, oymin), (oxmax, oymax))
+    """
+    with OpenEXR.File(filepath) as infile:
+        img = infile.channels()["RGB"].pixels
+        header = infile.header()
+        display_window = header.get("displayWindow", None)
+        # data_window = header.get("dataWindow", None)
+    return img, display_window
+
+def find_global_maps(input_dir):
+    """Finds the undistort and vignette maps in the directory."""
+    stmap_path = None
+    vignette_path = None
+    for f in os.listdir(input_dir):
+        if f.endswith("_undistort_map.exr") and f[0] != ".":
+            stmap_path = os.path.join(input_dir, f)
+        elif f.endswith("_vignette_map.exr") and f[0] != ".":
+            vignette_path = os.path.join(input_dir, f)
+    return stmap_path, vignette_path
+
+def pad_to_display_window(img, display_window):
+    # display_window: ((xmin, ymin), (xmax, ymax))
+    h, w = img.shape[:2]
+    (xy_min, xy_max) = display_window
+    xmin, ymin = xy_min
+    xmax, ymax = xy_max
+    out_h = ymax - ymin + 1
+    out_w = xmax - xmin + 1
+    padded = np.zeros((out_h, out_w, img.shape[2]), dtype=img.dtype)
+    y_off = -ymin
+    x_off = -xmin
+    padded[y_off:y_off+h, x_off:x_off+w, :] = img
+    return padded
+
+def apply_vignette(image, vignette_map):
+    return image * vignette_map
+
+def apply_stmap(image, stmap):
+    h, w = image.shape[:2]
+    stmap_flipped = stmap.copy()
+    stmap_flipped[..., 1] = 1.0 - stmap_flipped[..., 1]  # Flip Y for OpenCV
+    # Add 0.5 for Nuke-style pixel center convention
+    map_x = stmap_flipped[..., 0] * (w - 1) - 0.5
+    map_y = stmap_flipped[..., 1] * (h - 1) - 0.5
+    remapped = cv2.remap(
+        image,
+        map_x.astype(np.float32),
+        map_y.astype(np.float32),
+        interpolation=cv2.INTER_LINEAR,
+        borderMode=cv2.BORDER_CONSTANT
+    )
+    return remapped
 
 def merge_hdr_opencv(images, exposures, max_val=2.36, align=True):
     """
@@ -160,6 +204,21 @@ def merge_hdr_opencv(images, exposures, max_val=2.36, align=True):
 
     return hdr_rgb
 
+def save_exr_with_display_window(filepath, img, display_window):
+    """Save numpy array as EXR using new API, with optional display window."""
+    channels = {"RGB": img.astype(np.float32)}
+    header = {
+        "compression": OpenEXR.ZIP_COMPRESSION,
+        "type": OpenEXR.scanlineimage,
+    }
+    h, w = img.shape[:2]
+    if display_window is not None:
+        header["displayWindow"] = display_window
+        # Correct: dataWindow as ((xmin, ymin), (xmax, ymax))
+        header["dataWindow"] = ( (0, 0), (w-1, h-1) )
+    with OpenEXR.File(header, channels) as outfile:
+        outfile.write(filepath)
+    print(f"[✓] Saved merged EXR: {filepath}")
 
 def save_exr(filepath, img):
     """Save numpy array as EXR using new API."""
@@ -182,12 +241,31 @@ def process_hdr(input_dir, mode="debevec"):
         print("No EXR files found.")
         return
 
-    # Read images and metadata
+    # --- Detect and load correction maps ---
+    stmap_path, vignette_path = find_global_maps(input_dir)
+    stmap, display_window = None, None
+    vignette = None
+    if stmap_path:
+        stmap, display_window = read_exr_with_display_window(stmap_path)
+        stmap = stmap[..., :2]  # Use first two channels for STmap
+        stmap_flipped = stmap.copy()
+        stmap_flipped[..., 1] = 1.0 - stmap_flipped[..., 1]
+    if vignette_path:
+        vignette, _ = read_exr_with_display_window(vignette_path)
+
+    # --- Read, correct, and pad images ---
     images = []
     exposures = []
     for f in exr_files:
-        img, meta = read_exr_with_metadata(f)
+        img, _ = read_exr_with_display_window(f)
+        if vignette is not None:
+            img = apply_vignette(img, vignette)
+        if display_window is not None:
+            img = pad_to_display_window(img, display_window)
+        if stmap is not None:
+            img = apply_stmap(img, stmap)
         images.append(img)
+        _, meta = read_exr_with_metadata(f)
         exp = meta.get("exr/exif/2/exposure_time", 1.0)
         exposures.append(float(exp))
 
@@ -204,9 +282,8 @@ def process_hdr(input_dir, mode="debevec"):
     else:
         raise ValueError(f"Unsupported merge mode: {mode}")
 
-
     out_path = os.path.join(input_dir, "HDR_merged.exr")
-    save_exr(out_path, merged)
+    save_exr_with_display_window(out_path, merged, display_window)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Merge bracketed EXRs into HDR.")
