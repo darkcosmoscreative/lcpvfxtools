@@ -31,7 +31,7 @@
 
 - Apply in Nuke:
 
-<p align="center"><img width=500 src="https://github.com/user-attachments/assets/606e9389-8e5c-4db6-a967-ea8624e9c590"/></p>
+<p align="center"><img width=500 src="https://github.com/user-attachments/assets/7ff968b5-7a4e-4b1f-a4fe-26ba8637f222"/></p>
 
 - Provided Example:
 
