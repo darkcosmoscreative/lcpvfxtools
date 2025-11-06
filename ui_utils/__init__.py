@@ -272,12 +272,13 @@ class UIUtils(wx.Frame):
         # use the global config for supported raw formats
         formats_wildcard = ""
         for one_ext in cfg.SUPPORTED_RAW_FORMATS:
-            formats_wildcard += f"*.{one_ext.lower};"
-            formats_wildcard += f"*.{one_ext.upper};"
+            formats_wildcard += f"*.{str(one_ext.lower())};"
+            formats_wildcard += f"*.{str(one_ext.upper())};"
 
         if formats_wildcard.endswith(";"):
             formats_wildcard = formats_wildcard[:-1]
 
+        #print(formats_wildcard)
 
         with wx.FileDialog(
             self,
