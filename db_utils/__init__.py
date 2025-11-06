@@ -1350,7 +1350,7 @@ def demo():
     """
     db = LensProfileDatabase(lcp_directory=cfg.LCP_DIR,
                              pickle_file=cfg.PICKLE_FILE,
-                             force_reload=True)
+                             force_reload=False)
 
     # profile = db.find_lens_profile(make="Canon",
     #                                model="Canon EOS R",

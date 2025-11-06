@@ -38,11 +38,19 @@ class UIUtils(wx.Frame):
         # Initialize the UI
         self.init_ui()
 
+        # check if pickle file exists
+        if not os.path.exists(cfg.PICKLE_FILE):
+            print("Pickle file not found, creating new lens profile database pickle...")
+            force_reload = True
+        else:
+            print("Loading lens profile database from pickle...")
+            force_reload = False
+
         # Use the LensProfileDatabase class from db_utils
         self.lens_db = LensProfileDatabase(
             lcp_directory=cfg.LCP_DIR,
             pickle_file=cfg.PICKLE_FILE,
-            force_reload=True
+            force_reload=force_reload
         )
 
         self.Show()
@@ -260,10 +268,21 @@ class UIUtils(wx.Frame):
         Args:
             event (wx.Event): The wxPython event object.
         """
+
+        # use the global config for supported raw formats
+        formats_wildcard = ""
+        for one_ext in cfg.SUPPORTED_RAW_FORMATS:
+            formats_wildcard += f"*.{one_ext.lower};"
+            formats_wildcard += f"*.{one_ext.upper};"
+
+        if formats_wildcard.endswith(";"):
+            formats_wildcard = formats_wildcard[:-1]
+
+
         with wx.FileDialog(
             self,
             "Select Camera Raw File",
-            wildcard="Camera Raw Files (*.cr2;*.nef;*.arw;*.dng)|*.cr2;*.nef;*.arw;*.dng|All Files (*.*)|*.*",
+            wildcard=f"Camera Raw Files ({formats_wildcard})|{formats_wildcard}|All Files (*.*)|*.*",
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
         ) as file_dialog:
             if file_dialog.ShowModal() == wx.ID_CANCEL:
